@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark"><i class="bi bi-file-earmark-bar-graph-fill text-primary me-2"></i>Financial Summary Report</h3>
+            <p class="text-muted mb-0">A quick snapshot of your income, spending, and savings.</p>
+        </div>
+        <button onclick="window.print()" class="btn btn-outline-primary rounded-pill px-4 shadow-sm d-none d-md-block">
+            <i class="bi bi-printer me-2"></i>Print Report
+        </button>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100 border-start border-success border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase"><i class="bi bi-arrow-down-circle text-success me-1"></i>Total Income</p>
+                <h3 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ income }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100 border-start border-danger border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase"><i class="bi bi-arrow-up-circle text-danger me-1"></i>Total Expenses</p>
+                <h3 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ expenses }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100 border-start border-{{ 'primary' if savings >= 0 else 'danger' }} border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase"><i class="bi bi-piggy-bank text-primary me-1"></i>Net Savings</p>
+                <h3 class="fw-bold text-{{ 'dark' if savings >= 0 else 'danger' }} mb-0">{{ currency_symbol }}{{ savings }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 p-4">
+        <h5 class="fw-bold text-dark mb-3">What This Means</h5>
+        {% if income == 0 %}
+            <p class="text-muted mb-0">No income has been recorded yet, so a full summary can't be calculated. Add an income entry to get started.</p>
+        {% elif savings >= 0 %}
+            <p class="text-muted mb-0">
+                You've kept your spending under your income, saving
+                <strong class="text-dark">{{ currency_symbol }}{{ savings }}</strong> so far
+                (<strong class="text-success">{{ (savings / income * 100) | round(1) }}%</strong> of total income).
+                Keep an eye on the <a href="/intelligence">Intelligence Dashboard</a> for category-level suggestions.
+            </p>
+        {% else %}
+            <p class="text-muted mb-0">
+                Your expenses currently exceed your income by
+                <strong class="text-danger">{{ currency_symbol }}{{ -savings }}</strong>.
+                Visit the <a href="/budget">Budget</a> page to set spending limits, or check
+                <a href="/intelligence">Intelligence Dashboard</a> for where to cut back.
+            </p>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}

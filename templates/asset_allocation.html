@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script>
+    // Consistent Chart.js polish across every chart in the app: bigger
+    // legends, rounded tooltips, smooth easing instead of a snap-in.
+    Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+    Chart.defaults.plugins.legend.labels.font = { size: 13 };
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.titleFont = { size: 13, weight: '600' };
+    Chart.defaults.plugins.tooltip.bodyFont = { size: 13 };
+    Chart.defaults.animation.duration = 700;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+    Chart.defaults.elements.line.tension = 0.4;
+</script>
+
+<!-- Custom Styling for Fade-in/Slide-up Animations -->
+<style>
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .animate-fade-in {
+        animation: fadeInUp 0.6s ease-out forwards;
+    }
+</style>
+
+<div class="container-fluid mt-2 mb-5 animate-fade-in">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark"><i class="bi bi-pie-chart-fill text-primary me-2"></i>Asset Allocation</h3>
+            <p class="text-muted mb-0">Analyze the distribution and individual performance of your asset classes.</p>
+        </div>
+        <button onclick="window.print()" class="btn btn-outline-primary shadow-sm d-none d-md-block rounded-pill px-4 fw-semibold">
+            <i class="bi bi-printer-fill me-2"></i>Print Report
+        </button>
+    </div>
+
+    <!-- Summary Cards (Subtle Light Blue Differentiation) -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 bg-primary bg-opacity-10 border-start border-primary border-4 h-100">
+                <p class="text-primary mb-1 fw-semibold small text-uppercase">Total Investment</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ total_invested|default(0) }}</h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 bg-info bg-opacity-10 border-start border-info border-4 h-100">
+                <p class="text-info-emphasis mb-1 fw-semibold small text-uppercase">Current Value</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ total_current|default(0) }}</h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 bg-{{ 'success' if (total_profit|default(0)) >= 0 else 'danger' }} bg-opacity-10 border-start border-{{ 'success' if (total_profit|default(0)) >= 0 else 'danger' }} border-4 h-100">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Profit / Loss</p>
+                <h4 class="fw-bold text-{{ 'success' if (total_profit|default(0)) >= 0 else 'danger' }} mb-0">
+                    {{ '+' if (total_profit|default(0)) >= 0 else '' }}{{ currency_symbol }}{{ total_profit|default(0) }}
+                </h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 bg-success bg-opacity-10 border-start border-{{ 'success' if (overall_roi|default(0)) >= 0 else 'danger' }} border-4 h-100">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Overall ROI</p>
+                <h4 class="fw-bold text-{{ 'success' if (overall_roi|default(0)) >= 0 else 'danger' }} mb-0">
+                    {{ '+' if (overall_roi|default(0)) >= 0 else '' }}{{ overall_roi|default(0) }}%
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- MERGED CARD: Portfolio Health & Diversification Status (Dynamic) -->
+    <div class="row mb-4 g-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-4 bg-white border-start border-success border-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div class="d-flex align-items-center">
+                        <div class="me-4 text-center">
+                            <span class="text-muted small fw-semibold text-uppercase d-block">Portfolio Health</span>
+                            <h2 class="fw-bold text-dark mb-0">{{ health_score|default(91) }}<span class="fs-6 text-muted">/100</span></h2>
+                        </div>
+                        <div class="border-start ps-4">
+                            <h5 class="fw-bold text-success mb-1">
+                                {% if (health_score|default(91)) >= 85 %}★★★★★ Excellent
+                                {% elif (health_score|default(91)) >= 60 %}★★★☆☆ Moderate
+                                {% else %}★☆☆☆☆ Poor{% endif %}
+                            </h5>
+                            <p class="text-muted small mb-0">
+                                {% if (health_score|default(91)) >= 85 %}Well diversified across balanced asset categories.
+                                {% elif (health_score|default(91)) >= 60 %}Moderate distribution with some asset concentration.
+                                {% else %}High concentration risk detected across holdings.{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-4 py-2 fw-bold">
+                            {% if (health_score|default(91)) >= 85 %}Well Diversified
+                            {% elif (health_score|default(91)) >= 60 %}Moderately Balanced
+                            {% else %}High Concentration{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Modern Donut Chart with Center Text -->
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100 bg-white">
+                <h5 class="fw-bold text-dark mb-2">Asset Distribution</h5>
+                <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>Click a chart slice to view details.</p>
+                
+                <div style="position: relative; height:280px; width:100%; display:flex; justify-content:center; align-items:center;">
+                    {% if asset_labels|length > 0 %}
+                        <canvas id="assetChart" style="cursor: pointer;"></canvas>
+                        <!-- Center text overlay for Doughnut -->
+                        <div id="chartCenterText" style="position: absolute; text-align: center; pointer-events: none;">
+                            <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Portfolio</div>
+                            <div class="fw-bold text-dark" style="font-size: 1.1rem;">{{ currency_symbol }}{{ total_current|default(0) }}</div>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="bi bi-pie-chart text-secondary opacity-50" style="font-size: 4rem;"></i>
+                            <p class="mt-3 fw-semibold">No assets to display</p>
+                            <a href="/investments" class="btn btn-sm btn-outline-primary mt-2">Add an Investment</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Breakdown Table with Asset Icons -->
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100 bg-white">
+                <h5 class="fw-bold text-dark mb-4">Allocation Breakdown</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Asset Class</th>
+                                <th>Allocation %</th>
+                                <th>Current Value</th>
+                                <th>ROI %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in asset_breakdown %}
+                            <tr>
+                                <td class="fw-semibold">
+                                    {% if 'Stock' in item.asset or 'Equity' in item.asset %}<i class="bi bi-graph-up-arrow me-1"></i>Stocks
+                                    {% elif 'Gold' in item.asset %}<i class="bi bi-award-fill me-1"></i>Gold
+                                    {% elif 'FD' in item.asset or 'Fixed' in item.asset %}<i class="bi bi-bank me-1"></i>FD
+                                    {% elif 'Real' in item.asset or 'Property' in item.asset %}<i class="bi bi-house-fill me-1"></i>Real Estate
+                                    {% elif 'Crypto' in item.asset or 'Bitcoin' in item.asset %}<i class="bi bi-currency-bitcoin me-1"></i>Crypto
+                                    {% else %}<i class="bi bi-briefcase-fill me-1"></i>{{ item.asset }}{% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2 fw-semibold">{{ item.percentage }}%</span>
+                                        <div class="progress flex-grow-1" style="height: 6px;">
+                                            <div class="progress-bar bg-primary" style="width: {{ item.percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ currency_symbol }}{{ item.current }}</td>
+                                <td class="text-{{ 'success' if item.roi >= 0 else 'danger' }} fw-bold">
+                                    {{ '+' if item.roi >= 0 else '' }}{{ item.roi }}%
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No asset data available.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row: Dynamic Portfolio Summary & Conditional AI Suggestions -->
+    <div class="row mt-4 g-3">
+        <!-- Portfolio Summary Quick Facts (Light Gray Background) -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100 bg-light">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Portfolio Summary</h5>
+                <div class="row g-3 mt-1">
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm">
+                            <span class="text-muted small d-block">Largest Holding</span>
+                            <span class="fw-bold text-dark">{{ largest_holding|default('Stocks') }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm">
+                            <span class="text-muted small d-block">Smallest Holding</span>
+                            <span class="fw-bold text-dark">{{ smallest_holding|default('Gold') }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm">
+                            <span class="text-muted small d-block">Number of Assets</span>
+                            <span class="fw-bold text-dark">{{ total_assets_count if total_assets_count is defined else (asset_breakdown|length) }} Items</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm">
+                            <span class="text-muted small d-block">Diversification</span>
+                            <span class="fw-bold text-success">{{ risk_level|default('Excellent') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conditional AI Suggestions (Light Yellow Background) -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100 bg-warning bg-opacity-10 border-start border-warning border-4">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-stars text-warning me-2"></i>AI Asset Suggestions</h5>
+                <ul class="list-unstyled mb-0 text-dark">
+                    {% if ai_suggestions and ai_suggestions|length > 0 %}
+                        {% for suggestion in ai_suggestions %}
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> {{ suggestion }}</li>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Fallback Conditional Checks using Asset Breakdown -->
+                        {% set ns = namespace(has_crypto=false, has_gold=false, has_fd=false) %}
+                        {% for item in asset_breakdown %}
+                            {% if 'Crypto' in item.asset and item.percentage > 30 %}{% set ns.has_crypto = true %}{% endif %}
+                            {% if 'Gold' in item.asset and item.percentage < 5 %}{% set ns.has_gold = true %}{% endif %}
+                            {% if 'FD' in item.asset or 'Fixed' in item.asset %}{% set ns.has_fd = true %}{% endif %}
+                        {% endfor %}
+
+                        {% if ns.has_crypto %}
+                            <li class="mb-2"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i> Reduce Crypto exposure (>30%) to lower market volatility risk.</li>
+                        {% endif %}
+                        {% if ns.has_gold %}
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-warning me-2"></i> Increase Gold allocation (&lt;5%) to strengthen your inflation hedge.</li>
+                        {% endif %}
+                        {% if not ns.has_fd %}
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Consider adding Fixed Deposits (FD) for guaranteed capital security.</li>
+                        {% endif %}
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Maintain steady SIP contributions into stable equity funds.</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Regular asset rebalancing keeps your financial risk profile aligned.</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Drill-Down Table (Hidden by Default) -->
+    <div class="row mt-4" id="drillDownContainer" style="display: none;">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-4 border-start border-dark border-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0" id="drillDownTitle">Specific Assets</h5>
+                    <button class="btn btn-sm btn-light fw-bold text-muted rounded-pill px-3" onclick="document.getElementById('drillDownContainer').style.display='none'">
+                        <i class="bi bi-x-lg"></i> Close
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="drillDownTable">
+                        <!-- Injected via JavaScript -->
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const assetLabels = {{ asset_labels | tojson if asset_labels else [] }};
+    const assetValues = {{ asset_values | tojson if asset_values else [] }};
+    const rawInvestments = {{ raw_investments | tojson if raw_investments else [] }};
+    
+    if (assetLabels.length > 0 && document.getElementById('assetChart')) {
+        const ctx = document.getElementById('assetChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: assetLabels,
+                datasets: [{
+                    data: assetValues,
+                    backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#0dcaf0'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let value = context.raw || 0;
+                                let total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                let percentage = Math.round((value / total) * 100);
+                                return ` Value: {{ currency_symbol }}${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const clickedAsset = assetLabels[index];
+                        showDrillDown(clickedAsset);
+                    }
+                }
+            }
+        });
+    }
+
+    function showDrillDown(assetType) {
+        const container = document.getElementById('drillDownContainer');
+        const title = document.getElementById('drillDownTitle');
+        const table = document.getElementById('drillDownTable');
+        
+        container.style.display = 'block';
+        title.innerHTML = `<i class="bi bi-search me-2 text-primary"></i> ${assetType} Holdings`;
+        
+        const filtered = rawInvestments.filter(inv => inv.asset === assetType);
+        
+        let html = `
+            <thead class="text-muted small text-uppercase" style="letter-spacing: 0.5px;">
+                <tr>
+                    <th class="fw-semibold pb-3">Investment Name</th>
+                    <th class="fw-semibold pb-3">Invested Amount</th>
+                    <th class="fw-semibold pb-3">Current Value</th>
+                    <th class="fw-semibold pb-3">Profit / Loss</th>
+                </tr>
+            </thead>
+            <tbody class="border-top-0">
+        `;
+        
+        filtered.forEach(inv => {
+            const profit = inv.current_value - inv.invested_amount;
+            const profitClass = profit >= 0 ? 'text-success' : 'text-danger';
+            const profitSign = profit >= 0 ? '+' : '';
+            
+            html += `
+                <tr>
+                    <td class="fw-bold text-dark">${inv.investment_name}</td>
+                    <td class="text-muted">{{ currency_symbol }}${inv.invested_amount}</td>
+                    <td class="fw-bold">{{ currency_symbol }}${inv.current_value}</td>
+                    <td class="${profitClass} fw-bold">${profitSign}{{ currency_symbol }}${profit.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody>';
+        table.innerHTML = html;
+        container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+</script>
+
+<style>
+    @media print {
+        .btn, .sidebar, nav {
+            display: none !important;
+        }
+        .card {
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+        }
+    }
+</style>
+{% endblock %}

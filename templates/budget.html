@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+    
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-bullseye text-primary me-2"></i>Monthly Budget</h3>
+        <p class="text-muted">Set limits for your spending categories and monitor usage.</p>
+    </div>
+
+    <!-- Upgraded Premium Form -->
+    <div class="card p-4 shadow-sm border-0 rounded-4 mb-5" style="max-width: 700px;">
+        <h5 class="fw-bold text-dark mb-4">Set Budget Limit</h5>
+        
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted mb-1 small">Category</label>
+                    <select name="category" class="form-select bg-light border-0 py-2" required>
+                        <option value="" disabled selected>Select a category...</option>
+                        <option value="Food">🍔 Food</option>
+                        <option value="Travel">✈️ Travel</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Bills">💡 Bills</option>
+                        <option value="Education">🎓 Education</option>
+                        <option value="Entertainment">🍿 Entertainment</option>
+                        <option value="Other">📦 Other</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted mb-1 small">Budget Amount ({{ currency_symbol }})</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0 text-muted">{{ currency_symbol }}</span>
+                        <input type="number" step="0.01" name="amount" class="form-control bg-light border-0 py-2" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <div class="col-12 mt-4">
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold rounded-3 shadow-sm">
+                        <i class="bi bi-check-circle me-1"></i> Save Budget
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- ACTIVE BUDGETS WITH PROGRESS BARS -->
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+            <h5 class="fw-bold mb-0 text-dark">Category Budget Progress</h5>
+        </div>
+        <div class="card-body px-4 pb-4">
+            <div class="table-responsive">
+                <table class="table table-borderless align-middle mb-0">
+                    <thead class="border-bottom">
+                        <tr>
+                            <th class="text-muted fw-semibold text-uppercase" style="font-size: 0.85rem;">Category</th>
+                            <th class="text-muted fw-semibold text-uppercase" style="font-size: 0.85rem;">Spent / Limit</th>
+                            <th class="text-muted fw-semibold text-uppercase" style="font-size: 0.85rem; width: 30%;">Progress</th>
+                            <th class="text-muted fw-semibold text-uppercase text-end" style="font-size: 0.85rem;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in budgets %}
+                        <tr style="border-bottom: 1px solid #f8f9fa;">
+                            <td class="py-3">
+                                <span class="badge rounded-pill bg-light text-dark border px-3 py-2 fw-semibold">
+                                    {% if b.category == 'Food' %}<i class="bi bi-cup-hot-fill me-1"></i>Food
+                                    {% elif b.category == 'Travel' %}<i class="bi bi-airplane-fill me-1"></i>Travel
+                                    {% elif b.category == 'Shopping' %}<i class="bi bi-bag-fill me-1"></i>Shopping
+                                    {% elif b.category == 'Bills' %}<i class="bi bi-receipt me-1"></i>Bills
+                                    {% elif b.category == 'Education' %}<i class="bi bi-mortarboard-fill me-1"></i>Education
+                                    {% elif b.category == 'Entertainment' %}<i class="bi bi-controller me-1"></i>Entertainment
+                                    {% else %}<i class="bi bi-three-dots me-1"></i>{{ b.category }}{% endif %}
+                                </span>
+                            </td>
+                            <td class="py-3">
+                                <span class="fw-bold text-dark">{{ currency_symbol }}{{ b.spent }}</span> 
+                                <span class="text-muted small">/ {{ currency_symbol }}{{ b.amount }}</span>
+                            </td>
+                            <td class="py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 bg-light" style="height: 10px; border-radius: 10px; margin-right: 10px;">
+                                        <div class="progress-bar {% if b.percentage > 90 %}bg-danger{% elif b.percentage > 70 %}bg-warning{% else %}bg-success{% endif %} rounded-pill" 
+                                             role="progressbar" style="width: {{ b.percentage if b.percentage <= 100 else 100 }}%;"></div>
+                                    </div>
+                                    <span class="small fw-bold text-muted">{{ b.percentage }}%</span>
+                                </div>
+                            </td>
+                            <td class="py-3 text-end">
+                                <a href="/edit_budget/{{ b.id }}" class="btn btn-sm btn-outline-primary rounded-circle me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="/delete_budget/{{ b.id }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this budget limit?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" title="Delete">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-wallet2 fs-2 d-block mb-2 text-light"></i>
+                                No active budgets set yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- BUDGET RECOMMENDATIONS - lives here only; Analysis/Intelligence/AI Analytics link back to this page instead of repeating it -->
+    <div class="card shadow-sm border-0 rounded-4 mt-4">
+        <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clipboard2-check-fill text-primary me-2"></i>Budget Recommendations</h5>
+        </div>
+        <div class="card-body px-4 pb-4">
+            <ul class="list-unstyled mb-0">
+                {% for rec in budget_recommendations %}
+                <li class="mb-2 d-flex align-items-start">
+                    <i class="bi {{ 'bi-exclamation-triangle-fill text-warning' if 'Reduce' in rec or 'ratio' in rec else 'bi-check-circle-fill text-success' }} me-2 mt-1"></i>
+                    <span class="text-dark">{{ rec }}</span>
+                </li>
+                {% else %}
+                <li class="text-muted">Set a few budgets above to start getting recommendations.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <title>Register | Smart Finance Insights</title>
+    <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/inter.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body, .btn, .form-control {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .btn {
+            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.03);
+        }
+        .card {
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+
+<div class="container">
+    <div class="row justify-content-center mt-5 mb-5">
+        <!-- Made the column slightly wider to fit the grid nicely -->
+        <div class="col-lg-7 col-md-9">
+            
+            <div class="card shadow-sm border-0 rounded-4 p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold text-dark mb-2">
+                        <i class="bi bi-person-plus-fill text-primary me-2"></i>Create Your Account
+                    </h2>
+                    <p class="text-muted">Start managing your finances smarter.</p>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                                <i class="bi bi-info-circle-fill me-2"></i>{{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="fw-semibold text-muted mb-1 small">Full Name</label>
+                            <input type="text" name="name" class="form-control bg-light border-0 py-2" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="fw-semibold text-muted mb-1 small">Email Address</label>
+                            <input type="email" name="email" class="form-control bg-light border-0 py-2" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="fw-semibold text-muted mb-1 small">Password</label>
+                            <input type="password" name="password" class="form-control bg-light border-0 py-2" minlength="6" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="fw-semibold text-muted mb-1 small">Confirm Password</label>
+                            <input type="password" name="confirm_password" id="confirmPassword" class="form-control bg-light border-0 py-2" minlength="6" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="fw-semibold text-muted mb-1 small">Phone Number</label>
+                            <input type="text" name="phone" class="form-control bg-light border-0 py-2">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="fw-semibold text-muted mb-1 small">Occupation</label>
+                            <input type="text" name="occupation" class="form-control bg-light border-0 py-2">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="fw-semibold text-muted mb-1 small">Monthly Income ({{ currency_symbol }})</label>
+                            <div class="input-group shadow-sm-none">
+                                <span class="input-group-text bg-light border-0 text-muted">{{ currency_symbol }}</span>
+                                <input type="number" name="monthly_income" class="form-control bg-light border-0 py-2" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <div class="col-12 mt-4">
+                            <button class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm">
+                                Register
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="text-center mt-4">
+                    <span class="text-muted">Already have an account?</span> 
+                    <a href="/login" class="fw-bold text-primary text-decoration-none">Login</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const pw = this.password.value;
+        const confirm = document.getElementById('confirmPassword');
+        if (pw !== confirm.value) {
+            e.preventDefault();
+            confirm.setCustomValidity('Passwords do not match.');
+            confirm.reportValidity();
+        } else {
+            confirm.setCustomValidity('');
+        }
+    });
+</script>
+
+</body>
+</html>

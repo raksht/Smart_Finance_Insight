@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-stars text-primary me-2"></i>Intelligence Dashboard</h3>
+            <p class="text-muted mb-0">Everything about your money, in one view.</p>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold mt-2 mt-md-0">
+            <i class="bi bi-clock-history me-1"></i> Updated {{ now.strftime('%d %b %Y, %I:%M %p') }}
+        </span>
+    </div>
+
+    <!-- Row 1: Financial Health Gauge + Risk Meter -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-2 px-2">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i>Financial Health Score</h6>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center pt-0">
+                    <div style="position: relative; width: 200px; height: 110px;">
+                        <canvas id="healthGauge"></canvas>
+                        <div style="position: absolute; top: 65px; left: 0; right: 0; text-align: center;">
+                            <span class="fw-bold fs-2 text-dark">{{ financial_health.score }}</span>
+                            <span class="text-muted small d-block">/ 100</span>
+                        </div>
+                    </div>
+                    <span class="badge rounded-pill px-3 py-2 fw-bold mt-2
+                        {% if financial_health.tier == 'Excellent' %}bg-success bg-opacity-10 text-success border border-success border-opacity-25
+                        {% elif financial_health.tier == 'Good' %}bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25
+                        {% elif financial_health.tier == 'Fair' %}bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25
+                        {% else %}bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25{% endif %}">
+                        {{ financial_health.tier }}
+                    </span>
+                    <p class="text-muted small mt-2 mb-0">Savings: {{ financial_health.savings_rate }}% &middot; Investment growth: {{ financial_health.investment_growth }}% &middot; Debt-to-income: {{ debt_to_income_ratio }}%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-2 px-2">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-shield-check text-primary me-2"></i>Portfolio Risk Meter</h6>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center pt-0">
+                    <div class="text-center mb-3">
+                        <h2 class="fw-bold mb-0 text-{{ 'danger' if risk_level == 'High' else 'warning' if risk_level == 'Moderate' else 'success' if risk_level == 'Low' else 'muted' }}">
+                            {{ risk_level }}
+                        </h2>
+                        <p class="text-muted small mb-0">Portfolio concentration risk</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="text-muted small fw-semibold">Low</span>
+                        <div class="progress flex-grow-1 rounded-pill" style="height: 14px; background: linear-gradient(90deg, #198754 0%, #ffc107 50%, #dc3545 100%); opacity: 0.25;">
+                        </div>
+                        <span class="text-muted small fw-semibold">High</span>
+                    </div>
+                    <div class="position-relative" style="height: 14px; margin-top: -14px; margin-left: 42px; margin-right: 38px;">
+                        <div class="position-absolute top-0 bottom-0 rounded-pill" style="width: {{ risk_score }}%; background: linear-gradient(90deg, #198754, #ffc107, #dc3545); opacity: 1;"></div>
+                    </div>
+                    <p class="text-muted small text-center mt-3 mb-0">
+                        {% if risk_level == 'High' %}
+                            Over 30% of your portfolio value is concentrated in Cryptocurrency.
+                        {% elif risk_level == 'Moderate' %}
+                            Your portfolio has some concentration risk - consider diversifying further.
+                        {% elif risk_level == 'Low' %}
+                            Your portfolio is well diversified with minimal concentration risk.
+                        {% else %}
+                            Add investments to see your risk profile.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: Quick Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-info border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Net Worth</p>
+                <h6 class="fw-bold {{ 'text-success' if net_worth >= 0 else 'text-danger' }} mb-0">{{ currency_symbol }}{{ net_worth }}</h6>
+                <small class="text-muted">Investments − Debts ({{ currency_symbol }}{{ total_debt }})</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-danger border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Highest Expense Month</p>
+                <h6 class="fw-bold text-dark mb-0">{{ quick_stats.highest_expense_month }}</h6>
+                <small class="text-muted">{{ currency_symbol }}{{ quick_stats.highest_expense_month_amount }}</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-success border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Best Saving Month</p>
+                <h6 class="fw-bold text-dark mb-0">{{ quick_stats.best_saving_month }}</h6>
+                <small class="text-muted">{{ currency_symbol }}{{ quick_stats.best_saving_month_amount }} saved</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-primary border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Highest ROI Investment</p>
+                <h6 class="fw-bold text-dark mb-0 text-truncate">{{ quick_stats.highest_roi_investment }}</h6>
+                <small class="text-{{ 'success' if quick_stats.highest_roi_value >= 0 else 'danger' }}">{{ '+' if quick_stats.highest_roi_value >= 0 else '' }}{{ quick_stats.highest_roi_value }}%</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-warning border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Total Transactions</p>
+                <h6 class="fw-bold text-dark mb-0">{{ quick_stats.total_transactions }}</h6>
+                <small class="text-muted">income + expense entries</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Health Breakdown - what's driving the score above, distinct from the deeper category-level Spending Analysis page -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-2 px-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-clipboard2-data-fill text-primary me-2"></i>What's Driving Your Health Score</h6>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="/analysis" class="btn btn-sm btn-outline-secondary rounded-pill fw-semibold px-2 py-1" style="font-size: 0.75rem;"><i class="bi bi-graph-down-arrow me-1"></i>Full Spending Analysis</a>
+                        <a href="/budget" class="btn btn-sm btn-outline-secondary rounded-pill fw-semibold px-2 py-1" style="font-size: 0.75rem;"><i class="bi bi-clipboard2-check-fill me-1"></i>Budget Recommendations</a>
+                        <a href="/ai_analytics" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold px-2 py-1" style="font-size: 0.75rem;"><i class="bi bi-stars me-1"></i>AI Analytics</a>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="row g-4 align-items-center">
+                        <div class="col-lg-7">
+                            <canvas id="healthBreakdownChart" style="max-height: 220px;"></canvas>
+                        </div>
+                        <div class="col-lg-5">
+                            <p class="text-muted small mb-2">Each component feeds into the overall {{ financial_health.score }}/100 score above:</p>
+                            <ul class="list-unstyled small mb-0">
+                                <li class="mb-2 d-flex justify-content-between"><span>Expense Control <span class="text-muted">(30%)</span></span><span class="fw-semibold">{{ financial_health.breakdown.expense_score }}/100</span></li>
+                                <li class="mb-2 d-flex justify-content-between"><span>Savings Rate <span class="text-muted">(25%)</span></span><span class="fw-semibold">{{ financial_health.breakdown.savings_score }}/100</span></li>
+                                <li class="mb-2 d-flex justify-content-between"><span>Budget Adherence <span class="text-muted">(15%)</span></span><span class="fw-semibold">{{ financial_health.breakdown.budget_score }}/100</span></li>
+                                <li class="mb-2 d-flex justify-content-between"><span>Investment Growth <span class="text-muted">(15%)</span></span><span class="fw-semibold">{{ financial_health.breakdown.investment_score }}/100</span></li>
+                                <li class="mb-0 d-flex justify-content-between"><span>Debt Management <span class="text-muted">(15%)</span></span><span class="fw-semibold">{{ financial_health.breakdown.debt_score }}/100</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 4: Notifications + Goal Progress & Predictions -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-2 px-2 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-bell-fill text-primary me-2"></i>Notifications</h6>
+                    <a href="/notifications" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold px-2 py-0" style="font-size: 0.75rem;">View All</a>
+                </div>
+                <div class="card-body pt-0" style="max-height: 320px; overflow-y: auto;">
+                    {% if notifications and notifications|length > 0 %}
+                        <ul class="list-group list-group-flush">
+                            {% for n in notifications[:8] %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="small">
+                                    <i class="bi {{ n.icon }} me-2 text-{{ 'danger' if n.priority == 'High' else 'warning' if n.priority == 'Medium' else 'secondary' }}"></i>
+                                    {{ n.message }}
+                                </span>
+                                <span class="badge rounded-pill px-2 py-1 fw-semibold
+                                    {% if n.priority == 'High' %}bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25
+                                    {% elif n.priority == 'Medium' %}bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25
+                                    {% else %}bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25{% endif %}"
+                                    style="font-size: 0.7rem;">
+                                    {{ n.priority }}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted small text-center py-4 mb-0">No active alerts right now — you're all caught up!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-2 px-2 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-flag-fill text-warning me-2"></i>Goal Progress &amp; Predictions</h6>
+                    <a href="/goals" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold px-2 py-0" style="font-size: 0.75rem;">All</a>
+                </div>
+                <div class="card-body pt-0" style="max-height: 320px; overflow-y: auto;">
+                    {% if goal_predictions and goal_predictions|length > 0 %}
+                        {% for g in goal_predictions %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="fw-semibold text-dark text-truncate" style="max-width: 65%;">{{ g.name }}</span>
+                                <span class="text-muted fw-bold">{{ g.progress }}%</span>
+                            </div>
+                            <div class="progress rounded-pill mb-1" style="height: 8px;">
+                                <div class="progress-bar {{ 'bg-success' if g.progress >= 100 else 'bg-primary' }} rounded-pill" style="width: {{ g.progress }}%;"></div>
+                            </div>
+                            <p class="text-muted mb-0" style="font-size: 0.78rem;"><i class="bi bi-lightbulb-fill text-warning me-1"></i>{{ g.message }}</p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small text-center py-4 mb-0">No goals yet. <a href="/goals">Create one</a>.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 5: Monthly Savings Trend + Investment Allocation -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-3 px-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-graph-up-arrow text-success me-2"></i>Monthly Savings Trend</h5>
+                </div>
+                <div class="card-body px-3 pb-3">
+                    {% if trend_labels and trend_labels|length > 0 %}
+                        <canvas id="trendChart" style="max-height: 260px;"></canvas>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-graph-up text-secondary opacity-50" style="font-size: 3rem;"></i>
+                            <p class="mt-3 fw-semibold mb-0">Add income and expenses across a few months to see your savings trend.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-3 px-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pie-chart-fill text-primary me-2"></i>Investment Allocation</h5>
+                    <a href="/asset_allocation" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold px-2 py-0" style="font-size: 0.75rem;">Details</a>
+                </div>
+                <div class="card-body px-3 pb-3">
+                    {% if asset_breakdown and asset_breakdown|length > 0 %}
+                        <div class="row align-items-center">
+                            <div class="col-6">
+                                <canvas id="allocationChart" style="max-height: 220px;"></canvas>
+                            </div>
+                            <div class="col-6">
+                                {% for a in asset_breakdown %}
+                                <div class="d-flex justify-content-between align-items-center mb-2 small">
+                                    <span class="d-flex align-items-center">
+                                        <span class="rounded-circle me-2 allocation-swatch" data-index="{{ loop.index0 }}" style="width: 10px; height: 10px; display: inline-block;"></span>
+                                        <span class="text-dark fw-semibold">{{ a.asset }}</span>
+                                    </span>
+                                    <span class="fw-bold text-dark">{{ a.percentage }}%</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-briefcase text-secondary opacity-50" style="font-size: 3rem;"></i>
+                            <p class="mt-3 fw-semibold mb-0">No investments added yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 6: Expense Heat Map -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-3 px-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Expense Heat Map</h5>
+                    <p class="text-muted small mb-0 mt-1">Category spend, colored by how much it dominates your budget.</p>
+                </div>
+                <div class="card-body px-3 pb-3">
+                    {% if expense_heatmap and expense_heatmap|length > 0 %}
+                        <div class="row g-3">
+                            {% for cat in expense_heatmap %}
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="p-3 rounded-4 h-100 heatmap-card heatmap-{{ cat.level|lower }}">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold">{{ cat.category }}</span>
+                                        <span class="badge rounded-pill bg-white bg-opacity-50 fw-semibold" style="font-size: 0.7rem;">{{ cat.level }}</span>
+                                    </div>
+                                    <h5 class="fw-bold mb-0">{{ currency_symbol }}{{ cat.total }}</h5>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <style>
+                            .heatmap-card { color: #1f2937; }
+                            .heatmap-low { background-color: rgba(25, 135, 84, 0.12); border: 1px solid rgba(25, 135, 84, 0.25); }
+                            .heatmap-medium { background-color: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.3); }
+                            .heatmap-high { background-color: rgba(220, 53, 69, 0.12); border: 1px solid rgba(220, 53, 69, 0.28); }
+                        </style>
+                    {% else %}
+                        <p class="text-muted small text-center py-4 mb-0">No expenses recorded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 7: Recent Activity Timeline -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-3 px-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history text-primary me-2"></i>Recent Activity Timeline</h5>
+                </div>
+                <div class="card-body px-3 pb-3">
+                    {% if timeline %}
+                        {% for bucket_name, events in timeline.items() %}
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-muted text-uppercase small mb-3" style="letter-spacing: 0.5px;">{{ bucket_name }}</h6>
+                            <ul class="list-unstyled mb-0">
+                                {% for e in events %}
+                                <li class="d-flex justify-content-between align-items-center mb-2 ps-3" style="border-left: 3px solid {{ '#198754' if e.type == 'income' else '#dc3545' }};">
+                                    <span class="small text-dark ms-2">
+                                        <i class="bi {{ 'bi-arrow-down-circle-fill text-success' if e.type == 'income' else 'bi-arrow-up-circle-fill text-danger' }} me-2"></i>
+                                        {{ e.label }} {{ 'credited' if e.type == 'income' else 'expense added' }}
+                                    </span>
+                                    <span class="small fw-bold {{ 'text-success' if e.type == 'income' else 'text-danger' }} ms-2">
+                                        {{ '+' if e.type == 'income' else '-' }}{{ currency_symbol }}{{ e.amount }}
+                                    </span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small text-center py-4 mb-0">No recent activity yet - add an income or expense to get started.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script>
+    // Consistent Chart.js polish across every chart in the app: bigger
+    // legends, rounded tooltips, smooth easing instead of a snap-in.
+    Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+    Chart.defaults.plugins.legend.labels.font = { size: 13 };
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.titleFont = { size: 13, weight: '600' };
+    Chart.defaults.plugins.tooltip.bodyFont = { size: 13 };
+    Chart.defaults.animation.duration = 700;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+    Chart.defaults.elements.line.tension = 0.4;
+</script>
+<script>
+    // Financial Health Gauge (semi-circle doughnut)
+    const healthScore = {{ financial_health.score|default(0) }};
+    const gaugeColor = healthScore >= 85 ? '#198754' : healthScore >= 70 ? '#0d6efd' : healthScore >= 50 ? '#ffc107' : '#dc3545';
+    const gaugeEl = document.getElementById('healthGauge');
+    if (gaugeEl) {
+        new Chart(gaugeEl.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [healthScore, 100 - healthScore],
+                    backgroundColor: [gaugeColor, '#e9ecef'],
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: 270
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            }
+        });
+    }
+
+    // Financial Health Breakdown (horizontal bars for each scored component)
+    const breakdownEl = document.getElementById('healthBreakdownChart');
+    if (breakdownEl) {
+        const breakdown = {{ financial_health.breakdown | tojson }};
+        const barColor = v => v >= 70 ? '#198754' : v >= 40 ? '#ffc107' : '#dc3545';
+        const labels = ['Expense Control', 'Savings Rate', 'Budget Adherence', 'Investment Growth', 'Debt Management'];
+        const values = [breakdown.expense_score, breakdown.savings_score, breakdown.budget_score, breakdown.investment_score, breakdown.debt_score];
+        new Chart(breakdownEl.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: values.map(barColor),
+                    borderRadius: 6,
+                    barThickness: 22
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { min: 0, max: 100, grid: { color: '#f3f4f6' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // Monthly Savings Trend
+    const trendEl = document.getElementById('trendChart');
+    if (trendEl) {
+        new Chart(trendEl.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: {{ trend_labels | tojson if trend_labels else [] }},
+                datasets: [{
+                    label: 'Net Savings',
+                    data: {{ trend_values | tojson if trend_values else [] }},
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#198754'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: '#f3f4f6' } }
+                }
+            }
+        });
+    }
+
+    // Investment Allocation doughnut, with a swatch legend colored to match
+    const allocEl = document.getElementById('allocationChart');
+    if (allocEl) {
+        const allocColors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#20c997', '#fd7e14'];
+        const allocLabels = {{ asset_labels | tojson }};
+        new Chart(allocEl.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: allocLabels,
+                datasets: [{
+                    data: {{ asset_values | tojson }},
+                    backgroundColor: allocColors,
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: { legend: { display: false } }
+            }
+        });
+        document.querySelectorAll('.allocation-swatch').forEach(el => {
+            const idx = parseInt(el.getAttribute('data-index'), 10);
+            el.style.backgroundColor = allocColors[idx % allocColors.length];
+        });
+    }
+</script>
+
+{% endblock %}

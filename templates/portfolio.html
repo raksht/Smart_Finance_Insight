@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script>
+    // Consistent Chart.js polish across every chart in the app: bigger
+    // legends, rounded tooltips, smooth easing instead of a snap-in.
+    Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+    Chart.defaults.plugins.legend.labels.font = { size: 13 };
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.titleFont = { size: 13, weight: '600' };
+    Chart.defaults.plugins.tooltip.bodyFont = { size: 13 };
+    Chart.defaults.animation.duration = 700;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+    Chart.defaults.elements.line.tension = 0.4;
+</script>
+
+<div class="container-fluid mt-2 mb-5">
+    
+    <!-- MARKET SUMMARY TICKER (Dynamic demo values with conditional classes) -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 px-4 py-2 bg-light d-flex flex-row align-items-center justify-content-between text-nowrap overflow-auto" style="font-size: 0.85rem;">
+                <span class="fw-bold text-muted text-uppercase me-3" style="font-size: 0.75rem;"><i class="bi bi-activity text-primary me-1"></i> Market Summary (Demo)</span>
+                <div class="d-flex gap-4">
+                    <span>NIFTY 50 
+                        <strong class="{{ 'text-success' if nifty_change|default(0.85) >= 0 else 'text-danger' }}">
+                            {{ '↑' if nifty_change|default(0.85) >= 0 else '↓' }} {{ nifty_change|default(0.85) }}%
+                        </strong>
+                    </span>
+                    <span>Sensex 
+                        <strong class="{{ 'text-success' if sensex_change|default(0.92) >= 0 else 'text-danger' }}">
+                            {{ '↑' if sensex_change|default(0.92) >= 0 else '↓' }} {{ sensex_change|default(0.92) }}%
+                        </strong>
+                    </span>
+                    <span>Gold 
+                        <strong class="{{ 'text-success' if gold_change|default(-0.18) >= 0 else 'text-danger' }}">
+                            {{ '↑' if gold_change|default(-0.18) >= 0 else '↓' }} {{ gold_change|default(-0.18) }}%
+                        </strong>
+                    </span>
+                    <span>Bitcoin 
+                        <strong class="{{ 'text-success' if btc_change|default(2.3) >= 0 else 'text-danger' }}">
+                            {{ '↑' if btc_change|default(2.3) >= 0 else '↓' }} {{ btc_change|default(2.3) }}%
+                        </strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Portfolio Analytics Dashboard</h3>
+            <p class="text-muted mb-0">Comprehensive overview of your portfolio growth, performance, and risk.</p>
+        </div>
+        <div class="text-end text-muted small d-none d-md-block">
+            <span>Last Updated</span><br>
+            <strong class="text-dark">{{ now.strftime('%b %d, %Y - %I:%M %p') if now else 'Today 3:45 PM' }}</strong>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 border-start border-primary border-4 h-100 bg-primary text-white">
+                <p class="mb-1 fw-semibold small text-uppercase opacity-75">Total Invested</p>
+                <h4 class="fw-bold mb-0">{{ currency_symbol }}{{ total_invested if total_invested is defined else 'N/A' }}</h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 border-start border-info border-4 h-100">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Current Portfolio Value</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ total_current if total_current is defined else 'N/A' }}</h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 border-start border-{{ 'success' if (total_profit is defined and total_profit >= 0) else 'danger' }} border-4 h-100">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Overall Profit / Loss</p>
+                <h4 class="fw-bold text-{{ 'success' if (total_profit is defined and total_profit >= 0) else 'danger' }} mb-0">
+                    {{ '+' if (total_profit is defined and total_profit >= 0) else '' }}{{ currency_symbol }}{{ total_profit if total_profit is defined else 'N/A' }}
+                </h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 border-start border-{{ 'success' if (overall_roi is defined and overall_roi >= 0) else 'danger' }} border-4 h-100">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Overall Return (ROI)</p>
+                <h4 class="fw-bold text-{{ 'success' if (overall_roi is defined and overall_roi >= 0) else 'danger' }} mb-0">
+                    {{ '+' if (overall_roi is defined and overall_roi >= 0) else '' }}{{ overall_roi if overall_roi is defined else 'N/A' }}%
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Portfolio Status -->
+    <div class="row mb-4 g-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-3 bg-white d-flex flex-row align-items-center justify-content-between">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">Portfolio Status</h5>
+                    {% set roi_val = overall_roi if overall_roi is defined else 0 %}
+                    {% if roi_val >= 20 %}
+                        <p class="mb-0 text-success fw-bold"><i class="bi bi-graph-up-arrow me-1"></i>Excellent Growth <span class="text-muted fw-normal ms-3">Outstanding returns of +{{ roi_val }}%</span></p>
+                    {% elif roi_val >= 5 %}
+                        <p class="mb-0 text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Stable Growth <span class="text-muted fw-normal ms-3">Consistent performance of +{{ roi_val }}%</span></p>
+                    {% elif roi_val >= 0 %}
+                        <p class="mb-0 text-warning fw-bold"><i class="bi bi-dash-circle-fill me-1"></i>Moderate Performance <span class="text-muted fw-normal ms-3">Returns hovering around {{ roi_val }}%</span></p>
+                    {% else %}
+                        <p class="mb-0 text-danger fw-bold"><i class="bi bi-graph-down-arrow me-1"></i>Needs Improvement <span class="text-muted fw-normal ms-3">Current drawdown at {{ roi_val }}%</span></p>
+                    {% endif %}
+                </div>
+                <div class="text-end text-muted small">
+                    Updated: {{ now.strftime('%I:%M %p') if now else 'Just now' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Goals Progress with Remaining Balances -->
+    <div class="row mb-4 g-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-4">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-flag-fill text-warning me-2"></i>Financial Goals Progress</h5>
+                
+                {% if goals and goals|length > 0 %}
+                    {% for goal in goals %}
+                    {% set prog = (goal.saved / goal.target * 100) | round if goal.target > 0 else 0 %}
+                    {% set remaining = goal.target - goal.saved %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold text-dark">{{ goal.name }}</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted small">{{ currency_symbol }}{{ goal.saved }} / {{ currency_symbol }}{{ goal.target }} ({{ prog }}%)</span>
+                                {% if prog >= 100 %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 fw-bold small"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 fw-semibold small">{{ currency_symbol }}{{ remaining }} left</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="progress rounded-pill" style="height: 10px;">
+                            <div class="progress-bar {% if prog >= 100 %}bg-success{% else %}bg-warning{% endif %}" role="progressbar" style="width: {{ prog if prog <= 100 else 100 }}%;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-5">
+                        <span class="display-5 d-block mb-2"><i class="bi bi-flag-fill text-muted"></i></span>
+                        <h5 class="fw-bold text-dark mb-1">No financial goals yet</h5>
+                        <p class="small text-muted mb-3">Create your first goal to track your milestone savings.</p>
+                        <a href="/goals" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm">Create Goal</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics & Empty State Check -->
+    {% if total_invested and total_invested > 0 %}
+
+        <!-- Growth Chart Row with Calculated Highest/Lowest/Net Growth Metrics -->
+        <div class="row mb-4 g-3">
+            <div class="col-12">
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">Portfolio Growth Over Time</h5>
+                        <div class="d-flex gap-2">
+                            <a href="/export_investments" class="btn btn-sm btn-outline-primary shadow-sm">
+                                <i class="bi bi-file-earmark-excel me-1"></i>CSV
+                            </a>
+                            <a href="/export_investments_pdf" class="btn btn-sm btn-outline-danger shadow-sm">
+                                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Growth Summary Metrics Bar -->
+                    <div class="row g-2 mb-3 bg-light p-3 rounded-3 text-center">
+                        <div class="col-md-4">
+                            <span class="text-muted small d-block uppercase fw-semibold">Highest Value</span>
+                            <span class="fw-bold text-success fs-6">{{ currency_symbol }}{{ highest_value if highest_value is defined else (total_current if total_current is defined else 'N/A') }}</span>
+                        </div>
+                        <div class="col-md-4 border-start border-end">
+                            <span class="text-muted small d-block uppercase fw-semibold">Lowest Value</span>
+                            <span class="fw-bold text-danger fs-6">{{ currency_symbol }}{{ lowest_value if lowest_value is defined else (total_invested if total_invested is defined else 'N/A') }}</span>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="text-muted small d-block uppercase fw-semibold">Net Growth</span>
+                            <span class="fw-bold text-primary fs-6">{{ '+' if (total_profit is defined and total_profit >= 0) else '' }}{{ currency_symbol }}{{ total_profit if total_profit is defined else 'N/A' }}</span>
+                        </div>
+                    </div>
+
+                    <div style="position: relative; height:300px; width:100%; display:flex; justify-content:center; align-items:center;">
+                        {% if growth_labels|length > 0 %}
+                            <canvas id="growthChart"></canvas>
+                        {% else %}
+                            <div class="text-center text-muted">
+                                <i class="bi bi-graph-up text-secondary opacity-50" style="font-size: 4rem;"></i>
+                                <p class="mt-3 fw-semibold">Not enough data to map growth.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Bottom Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 rounded-4 p-4 h-100 border-top border-success border-4">
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-trophy text-success me-2"></i>Top Performing</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for asset in top_assets %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div><div class="fw-bold">{{ asset.name }}</div><small class="text-muted">{{ asset.asset }}</small></div>
+                            <span class="badge bg-success rounded-pill px-3 py-2">+{{ asset.roi }}%</span>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted small px-0">No top performing asset recorded.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 rounded-4 p-4 h-100 border-top border-danger border-4">
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-graph-down-arrow text-danger me-2"></i>Underperforming</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for asset in worst_assets %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div><div class="fw-bold">{{ asset.name }}</div><small class="text-muted">{{ asset.asset }}</small></div>
+                            <span class="badge bg-danger rounded-pill px-3 py-2">{{ asset.roi }}%</span>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted small px-0">No underperforming asset recorded.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Upgraded Risk Analysis Card with Dynamic Recommendations -->
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 rounded-4 p-4 h-100 bg-dark text-white">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-shield-check text-warning me-2"></i>Risk Analysis</h6>
+                    <div class="text-center">
+                        <h1 class="display-5 fw-bold text-{{ 'danger' if risk_level == 'High' else 'warning' if risk_level == 'Moderate' else 'success' }} mb-0">{{ risk_score if risk_score is defined else 'N/A' }}</h1>
+                        <span class="text-light opacity-75 small d-block mb-2">{{ risk_level if risk_level is defined else 'N/A' }} Risk</span>
+                        
+                        <div class="text-start mt-3 pt-3 border-top border-secondary border-opacity-50 small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-light opacity-75">Diversification</span>
+                                <strong class="text-success">{{ diversification_status if diversification_status is defined else 'N/A' }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-light opacity-75">Largest Exposure</span>
+                                <strong class="text-warning">{{ largest_holding if largest_holding is defined else 'N/A' }} ({{ largest_holding_pct if largest_holding_pct is defined else 'N/A' }}%)</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-light opacity-75">Recommendation</span>
+                                <strong class="text-info">
+                                    {% if risk_level == 'High' %}
+                                        Reduce equity allocation.
+                                    {% elif risk_level == 'Moderate' %}
+                                        Maintain diversification.
+                                    {% else %}
+                                        Portfolio allocation is balanced.
+                                    {% endif %}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comprehensive Zerodha Console Style Portfolio Insights Card -->
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="card shadow-sm border-0 rounded-4 p-4 bg-white border-start border-primary border-4">
+                    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-lightbulb-fill text-primary me-2"></i>Portfolio Insights</h5>
+                    <div class="row g-3">
+                        <!-- Column 1: Performance Highlights -->
+                        <div class="col-md-6">
+                            <ul class="list-unstyled mb-0 text-dark">
+                                <li class="mb-2">
+                                    <i class="bi bi-dot text-primary fs-5 me-1"></i>
+                                    <strong>Best Performing Asset:</strong> {{ best_asset if best_asset is defined else (highest_roi_name if highest_roi_name is defined else 'N/A') }} 
+                                    {% if highest_roi_val is defined %}(+{{ highest_roi_val }}%){% endif %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-dot text-danger fs-5 me-1"></i>
+                                    <strong>Worst Performing Asset:</strong> {{ worst_asset if worst_asset is defined else (lowest_roi_name if lowest_roi_name is defined else 'N/A') }}
+                                    {% if lowest_roi_val is defined %}({{ lowest_roi_val }}%){% endif %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-dot text-success fs-5 me-1"></i>
+                                    <strong>Largest Investment:</strong> {{ largest_investment if largest_investment is defined else 'N/A' }}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-dot text-secondary fs-5 me-1"></i>
+                                    <strong>Smallest Investment:</strong> {{ smallest_investment if smallest_investment is defined else 'N/A' }}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-dot text-warning fs-5 me-1"></i>
+                                    <strong>Average ROI:</strong> {{ average_roi if average_roi is defined else (overall_roi if overall_roi is defined else 'N/A') }}%
+                                </li>
+                                <li>
+                                    <i class="bi bi-dot text-info fs-5 me-1"></i>
+                                    <strong>Most Recent Investment:</strong> {{ recent_investment if recent_investment is defined else 'N/A' }}
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Column 2: Analytical Counts -->
+                        <div class="col-md-6 border-start">
+                            <ul class="list-unstyled mb-0 text-dark">
+                                <li class="mb-2">
+                                    <i class="bi bi-dot text-info fs-5 me-1"></i>
+                                    <strong>Total Investments:</strong> {{ total_investments_count if total_investments_count is defined else 'N/A' }}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-dot text-success fs-5 me-1"></i>
+                                    <strong>Winning Investments:</strong> {{ winning_investments_count if winning_investments_count is defined else 'N/A' }}
+                                </li>
+                                <li>
+                                    <i class="bi bi-dot text-danger fs-5 me-1"></i>
+                                    <strong>Losing Investments:</strong> {{ losing_investments_count if losing_investments_count is defined else 'N/A' }}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- Empty State Display -->
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="card shadow-sm border-0 rounded-4 p-5 text-center bg-white">
+                    <div class="py-5">
+                        <i class="bi bi-briefcase text-secondary opacity-50 display-3 mb-3 d-block"></i>
+                        <h4 class="fw-bold text-dark mb-2">No portfolio data available.</h4>
+                        <p class="text-muted mb-4">Start by adding your first investment to activate advanced tracking analytics.</p>
+                        <a href="/investments" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm">
+                            <i class="bi bi-plus-lg me-1"></i> Add Investment
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    const growthLabels = {{ growth_labels | tojson if growth_labels else [] }};
+    const growthData = {{ growth_values | tojson if growth_values else [] }};
+    if (growthLabels.length > 0 && document.getElementById('growthChart')) {
+        new Chart(document.getElementById('growthChart').getContext('2d'), {
+            type: 'line',
+            data: { 
+                labels: growthLabels, 
+                datasets: [{ 
+                    data: growthData, 
+                    borderColor: '#198754', 
+                    backgroundColor: 'rgba(25, 135, 84, 0.15)', 
+                    borderWidth: 3, 
+                    fill: true, 
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#198754'
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } }, 
+                scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } 
+            }
+        });
+    }
+</script>
+{% endblock %}

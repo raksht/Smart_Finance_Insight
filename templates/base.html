@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <script>
+        // Applied before any CSS/content renders so there's no flash of the
+        // wrong theme on reload.
+        (function () {
+            try {
+                if (localStorage.getItem('darkMode') === 'true') {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                }
+            } catch (e) { /* localStorage unavailable - default to light */ }
+        })();
+    </script>
+    <style>
+        /* Avoids a flash of the expanded sidebar before the collapse-toggle
+           JS runs, mirroring the dark-mode pre-paint script above. */
+        html.sidebar-pre-collapsed .sidebar { min-width: 76px !important; width: 76px !important; }
+        html.sidebar-pre-collapsed .menu-label,
+        html.sidebar-pre-collapsed .logo-text { opacity: 0 !important; max-width: 0 !important; }
+        html.sidebar-pre-collapsed .logo-icon { display: none !important; }
+        html.sidebar-pre-collapsed .nav-group-label {
+            opacity: 0 !important; font-size: 0 !important; height: 1px !important;
+            margin: 14px 12px !important; padding: 0 !important; background-color: rgba(255,255,255,0.12) !important;
+        }
+    </style>
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                    document.documentElement.classList.add('sidebar-pre-collapsed');
+                }
+            } catch (e) { /* localStorage unavailable - default to expanded */ }
+        })();
+    </script>
+    <title>Smart Finance Insights</title>
+    
+    <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/inter.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        /* One consistent font across the whole app */
+        body, .btn, .form-control, .form-select, input, textarea, select {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        /* Smooth transition for theme switching */
+        body, .content-bg, .card, .text-dark, .text-muted, h1, h2, h3, h4, h5, h6 {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Subtle global polish: cards lift slightly on hover, buttons/progress
+           bars animate smoothly instead of snapping */
+        .card {
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.3s ease, color 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.08) !important;
+        }
+        .btn {
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease, filter 0.15s ease;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.03);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .progress-bar {
+            transition: width 0.6s ease;
+        }
+        .topbar .btn, .topbar a {
+            transition: transform 0.15s ease;
+        }
+        .topbar .btn:hover, .topbar a:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Privacy Mode Blur */
+        .privacy-blur {
+            filter: blur(6px);
+            user-select: none;
+            pointer-events: none;
+            opacity: 0.7;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* --- PREMIUM AESTHETIC SIDEBAR --- */
+        .sidebar-premium {
+            /* A deep, rich Midnight Slate gradient */
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); 
+            color: #ffffff;
+            border-right: 1px solid rgba(255,255,255,0.05) !important;
+        }
+        
+        .sidebar-premium h3 {
+            color: #ffffff !important;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        /* Group section labels (Finance / Investments / Planning) */
+        .nav-group-label {
+            color: #64748b;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 10px 16px 4px;
+        }
+
+        /* Styling for the sidebar links */
+        .menu {
+            display: block;
+            color: #94a3b8; /* Soft silver/slate for inactive links */
+            padding: 12px 16px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+
+        /* Indented sub-items under a group label */
+        .menu-sub {
+            padding-top: 9px;
+            padding-bottom: 9px;
+            font-size: 0.92rem;
+        }
+
+        /* Hover and Active states */
+        .menu:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            transform: translateX(4px); /* Subtle slide effect */
+        }
+
+        .menu.active {
+            background-color: rgba(37, 99, 235, 0.15); /* Soft blue tint for active */
+            color: #ffffff;
+            font-weight: 600;
+            border-left: 3px solid #3b82f6; /* Crisp blue accent line */
+        }
+
+        .menu i {
+            color: inherit !important; 
+            font-size: 1.1rem;
+        }
+        
+        .content-bg {
+            background-color: #f8f9fa;
+        }
+
+        /* Footer */
+        .app-footer {
+            border-top: 1px solid #e9ecef;
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            padding-bottom: 0.5rem;
+            text-align: center;
+            color: #94a3b8;
+        }
+        [data-bs-theme="dark"] .app-footer {
+            border-top-color: #263042;
+        }
+
+        /* --- DARK MODE OVERRIDES ---
+           Bootstrap 5.3's data-bs-theme="dark" only re-themes components
+           that use its CSS variables (e.g. plain .card). Most pages here
+           use hardcoded utility classes like bg-white/bg-light/text-dark,
+           which are NOT theme-aware by default, so we override them
+           explicitly whenever the dark theme is active. */
+        [data-bs-theme="dark"] .content-bg {
+            background-color: #0b1120;
+        }
+        [data-bs-theme="dark"] .card {
+            background-color: #151b28;
+            color: #e5e7eb;
+        }
+        [data-bs-theme="dark"] .bg-white {
+            background-color: #151b28 !important;
+        }
+        [data-bs-theme="dark"] .bg-light {
+            background-color: #1b2333 !important;
+        }
+        [data-bs-theme="dark"] .text-dark {
+            color: #e5e7eb !important;
+        }
+        [data-bs-theme="dark"] .text-muted {
+            color: #94a3b8 !important;
+        }
+        [data-bs-theme="dark"] .border,
+        [data-bs-theme="dark"] .border-top,
+        [data-bs-theme="dark"] .border-bottom,
+        [data-bs-theme="dark"] .border-start,
+        [data-bs-theme="dark"] .border-end {
+            border-color: #263042 !important;
+        }
+        [data-bs-theme="dark"] .table {
+            color: #e5e7eb;
+            --bs-table-bg: transparent;
+        }
+        [data-bs-theme="dark"] .table-light,
+        [data-bs-theme="dark"] thead.table-light,
+        [data-bs-theme="dark"] .table > :not(caption) > * > * {
+            background-color: transparent;
+        }
+        [data-bs-theme="dark"] thead.table-light {
+            background-color: #1b2333 !important;
+            color: #cbd5e1 !important;
+        }
+        [data-bs-theme="dark"] .table-hover > tbody > tr:hover > * {
+            background-color: #1b2333;
+            color: #e5e7eb;
+        }
+        [data-bs-theme="dark"] .modal-content {
+            background-color: #151b28;
+            color: #e5e7eb;
+        }
+        [data-bs-theme="dark"] .form-control,
+        [data-bs-theme="dark"] .form-select {
+            background-color: #1b2333;
+            color: #e5e7eb;
+            border-color: #263042;
+        }
+        [data-bs-theme="dark"] .form-control::placeholder {
+            color: #64748b;
+        }
+        [data-bs-theme="dark"] .input-group-text {
+            background-color: #1b2333;
+            color: #94a3b8;
+            border-color: #263042;
+        }
+        [data-bs-theme="dark"] .badge.bg-light {
+            background-color: #1b2333 !important;
+            color: #cbd5e1 !important;
+        }
+        [data-bs-theme="dark"] .dropdown-menu:not(.dropdown-menu-dark) {
+            background-color: #151b28;
+            color: #e5e7eb;
+        }
+        [data-bs-theme="dark"] .dropdown-item-text,
+        [data-bs-theme="dark"] .dropdown-item {
+            color: #e5e7eb;
+        }
+        [data-bs-theme="dark"] .list-group-item {
+            background-color: transparent;
+            color: #e5e7eb;
+            border-color: #263042;
+        }
+        [data-bs-theme="dark"] .alert {
+            --bs-alert-bg: #1b2333;
+            --bs-alert-color: #e5e7eb;
+            --bs-alert-border-color: #263042;
+        }
+        /* --- COLLAPSIBLE SIDEBAR --- */
+        .sidebar {
+            transition: width 0.22s ease, min-width 0.22s ease;
+        }
+        .sidebar.sidebar-collapsed {
+            min-width: 76px !important;
+            width: 76px !important;
+        }
+        /* Fade + shrink the text instead of an abrupt display:none jump, so
+           the collapse reads as one smooth motion rather than a text pop. */
+        .menu-label, .nav-group-label, .logo-text {
+            opacity: 1;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.15s ease, max-width 0.22s ease, margin 0.22s ease, font-size 0.22s ease;
+        }
+        .sidebar.sidebar-collapsed .menu-label,
+        .sidebar.sidebar-collapsed .logo-text {
+            opacity: 0;
+            max-width: 0;
+        }
+        /* Group labels ("Finance", "Investments"...) collapse into a plain
+           thin divider line rather than disappearing with nothing left in
+           their place - keeps the grouping visible at a glance. */
+        .nav-group-label {
+            transition: opacity 0.15s ease, height 0.22s ease, margin 0.22s ease, background-color 0.22s ease;
+        }
+        .sidebar.sidebar-collapsed .nav-group-label {
+            opacity: 0;
+            max-width: none;
+            font-size: 0;
+            height: 1px;
+            margin: 14px 12px;
+            padding: 0;
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+        .sidebar.sidebar-collapsed hr {
+            margin-left: 12px;
+            margin-right: 12px;
+        }
+        .sidebar.sidebar-collapsed .menu {
+            display: flex;
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .sidebar.sidebar-collapsed .menu i {
+            margin-right: 0 !important;
+            font-size: 1.25rem;
+        }
+        .sidebar.sidebar-collapsed .sidebar-header {
+            justify-content: center;
+        }
+        .sidebar.sidebar-collapsed .sidebar-header .logo-icon {
+            display: none;
+        }
+        #sidebarCollapseToggle {
+            flex-shrink: 0;
+            transition: transform 0.22s ease;
+        }
+        .sidebar.sidebar-collapsed #sidebarCollapseToggle {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        /* --- MOBILE SIDEBAR DRAWER --- */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                bottom: 0;
+                z-index: 1050;
+                width: 260px !important;
+                min-width: 260px !important;
+                transition: left 0.25s ease;
+            }
+            .sidebar.mobile-open {
+                left: 0;
+            }
+            .sidebar.sidebar-collapsed .menu-label,
+            .sidebar.sidebar-collapsed .logo-text {
+                opacity: 1;
+                max-width: 200px;
+            }
+            .sidebar.sidebar-collapsed .logo-icon {
+                display: inline-block;
+            }
+            .sidebar.sidebar-collapsed .nav-group-label {
+                opacity: 1;
+                font-size: 0.7rem;
+                height: auto;
+                margin: 0;
+                padding: 10px 16px 4px;
+                background-color: transparent;
+            }
+            #sidebarOverlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.4);
+                z-index: 1040;
+            }
+            #sidebarOverlay.show {
+                display: block;
+            }
+            #mobileMenuBtn {
+                display: inline-flex !important;
+            }
+        }
+        #mobileMenuBtn {
+            display: none;
+        }
+        /* --- FLOATING QUICK-ADD BUTTON --- */
+        .fab-item {
+            opacity: 0;
+            transform: translateY(10px) scale(0.95);
+            pointer-events: none;
+            transition: opacity 0.16s ease, transform 0.16s ease;
+        }
+        #fabMenu.fab-open .fab-item {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        #fabMenu.fab-open .fab-item:nth-child(1) { transition-delay: 0.06s; }
+        #fabMenu.fab-open .fab-item:nth-child(2) { transition-delay: 0.09s; }
+        #fabMenu.fab-open .fab-item:nth-child(3) { transition-delay: 0.12s; }
+        #fabMenu.fab-open .fab-item:nth-child(4) { transition-delay: 0.15s; }
+        #fabToggle:hover {
+            transform: scale(1.06);
+            box-shadow: 0 6px 18px rgba(13, 110, 253, 0.4) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="d-flex">
+
+    <!-- Aesthetic Deep Slate Sidebar -->
+    <div class="sidebar sidebar-premium p-3 vh-100 overflow-y-auto sticky-top shadow-lg" id="appSidebar" style="min-width: 260px; display: flex; flex-direction: column;">
+
+        <div class="sidebar-header d-flex align-items-center justify-content-between mb-4 mt-2">
+            <h3 class="mb-0"><i class="bi bi-wallet2 me-2 text-primary logo-icon"></i><span class="logo-text">Smart Finance</span></h3>
+            <button id="sidebarCollapseToggle" class="btn btn-sm btn-outline-secondary border-secondary text-light rounded-3" title="Collapse sidebar">
+                <i class="bi bi-chevron-double-left" id="sidebarCollapseIcon"></i>
+            </button>
+        </div>
+
+        <a href="/dashboard" class="menu {% if request.path == '/dashboard' or request.path == '/' %}active{% endif %}" title="Dashboard">
+            <i class="bi bi-grid-fill me-3"></i><span class="menu-label">Dashboard</span>
+        </a>
+
+        <hr class="border-secondary opacity-25 my-3">
+
+        <div class="nav-group-label">Finance</div>
+        <a href="/transactions" class="menu menu-sub {% if 'transaction' in request.path %}active{% endif %}" title="Transactions">
+            <i class="bi bi-receipt me-3"></i><span class="menu-label">Transactions</span>
+        </a>
+        <a href="/budget" class="menu menu-sub {% if 'budget' in request.path %}active{% endif %}" title="Budget">
+            <i class="bi bi-bullseye me-3"></i><span class="menu-label">Budget</span>
+        </a>
+        <a href="/bills" class="menu menu-sub {% if 'bill' in request.path %}active{% endif %}" title="Bills">
+            <i class="bi bi-receipt-cutoff me-3"></i><span class="menu-label">Bills</span>
+        </a>
+        <a href="/debts" class="menu menu-sub {% if 'debt' in request.path %}active{% endif %}" title="Debts">
+            <i class="bi bi-credit-card-2-back-fill me-3"></i><span class="menu-label">Debts</span>
+        </a>
+
+        <div class="nav-group-label">Investments</div>
+        <a href="/investments" class="menu menu-sub {% if 'investment' in request.path %}active{% endif %}" title="Investments">
+            <i class="bi bi-briefcase-fill me-3"></i><span class="menu-label">Investments</span>
+        </a>
+        <a href="/portfolio" class="menu menu-sub {% if 'portfolio' in request.path %}active{% endif %}" title="Portfolio">
+            <i class="bi bi-bar-chart-fill me-3"></i><span class="menu-label">Portfolio</span>
+        </a>
+        <a href="/asset_allocation" class="menu menu-sub {% if 'asset_allocation' in request.path %}active{% endif %}" title="Asset Allocation">
+            <i class="bi bi-pie-chart-fill me-3"></i><span class="menu-label">Asset Allocation</span>
+        </a>
+
+        <div class="nav-group-label">Planning</div>
+        <a href="/goals" class="menu menu-sub {% if 'goal' in request.path %}active{% endif %}" title="Goals">
+            <i class="bi bi-trophy-fill me-3"></i><span class="menu-label">Goals</span>
+        </a>
+        <a href="/analysis" class="menu menu-sub {% if request.path == '/analysis' %}active{% endif %}" title="Analysis">
+            <i class="bi bi-graph-down-arrow me-3"></i><span class="menu-label">Analysis</span>
+        </a>
+        <a href="/intelligence" class="menu menu-sub {% if 'intelligence' in request.path %}active{% endif %}" title="Intelligence">
+            <i class="bi bi-stars me-3"></i><span class="menu-label">Intelligence</span>
+        </a>
+        <a href="/ai_analytics" class="menu menu-sub {% if 'ai_analytics' in request.path %}active{% endif %}" title="AI Analytics">
+            <i class="bi bi-cpu-fill me-3"></i><span class="menu-label">AI Analytics</span>
+        </a>
+
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="content content-bg p-4 w-100">
+
+        <!-- Top Navbar: quick search + dark mode + privacy + notifications + profile -->
+        {% if session.get('user_id') %}
+        <div id="sidebarOverlay"></div>
+        <div class="topbar d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+            <button id="mobileMenuBtn" class="btn btn-light border rounded-circle" style="width:42px;height:42px;">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="topbar-title flex-grow-1" style="min-width: 0;">
+                <h5 class="fw-bold text-dark mb-0 text-truncate">
+                    {% if request.path.startswith('/dashboard') or request.path == '/' %}Dashboard
+                    {% elif request.path.startswith('/transactions') %}Transactions
+                    {% elif request.path.startswith('/budget') %}Budget
+                    {% elif request.path.startswith('/bills') %}Bills
+                    {% elif request.path.startswith('/debts') %}Debts
+                    {% elif request.path.startswith('/investments') %}Investments
+                    {% elif request.path.startswith('/portfolio') %}Portfolio
+                    {% elif request.path.startswith('/asset_allocation') %}Asset Allocation
+                    {% elif request.path.startswith('/goals') %}Goals
+                    {% elif request.path.startswith('/analysis') %}Spending Analysis
+                    {% elif request.path.startswith('/intelligence') %}Intelligence Dashboard
+                    {% elif request.path.startswith('/ai_analytics') %}AI Analytics
+                    {% elif request.path.startswith('/notifications') %}Notifications
+                    {% elif request.path.startswith('/settings') %}Settings
+                    {% elif request.path.startswith('/profile') %}My Profile
+                    {% elif request.path.startswith('/help') %}Help
+                    {% else %}Smart Finance
+                    {% endif %}
+                </h5>
+                <small class="text-muted d-none d-sm-block">{{ nav_now.strftime('%A, %d %B %Y') }}</small>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+
+                <!-- DARK MODE TOGGLE -->
+                <button id="darkModeToggle" class="btn btn-light border rounded-circle d-flex align-items-center justify-content-center" type="button" title="Toggle dark mode" style="width: 42px; height: 42px;">
+                    <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
+                    <span id="darkModeText" class="visually-hidden">Dark Mode: OFF</span>
+                </button>
+
+                <!-- PRIVACY TOGGLE -->
+                <button id="privacyToggle" class="btn btn-light border rounded-circle d-flex align-items-center justify-content-center" type="button" title="Blur sensitive numbers" style="width: 42px; height: 42px;">
+                    <i class="bi bi-eye-fill" id="privacyIcon"></i>
+                    <span id="privacyText" class="visually-hidden">Privacy: OFF</span>
+                </button>
+
+                <div class="dropdown">
+                    <button class="btn btn-light border rounded-circle position-relative d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 42px; height: 42px;">
+                        <i class="bi bi-bell-fill text-dark"></i>
+                        {% if nav_notification_count and nav_notification_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+                                {{ nav_notification_count }}
+                            </span>
+                        {% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg" style="min-width: 300px;">
+                        {% if nav_notifications and nav_notifications|length > 0 %}
+                            {% for n in nav_notifications %}
+                            <li>
+                                <a href="{{ n.link }}" class="dropdown-item small py-2 d-flex align-items-start text-wrap">
+                                    <i class="bi {{ n.icon }} me-2 text-{{ 'danger' if n.priority == 'High' else 'warning' if n.priority == 'Medium' else 'secondary' }}"></i>
+                                    <span>{{ n.message }}</span>
+                                </a>
+                            </li>
+                            {% endfor %}
+                            <li><hr class="dropdown-divider"></li>
+                        {% else %}
+                            <li><span class="dropdown-item-text small text-muted py-2 d-block">You're all caught up!</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                        {% endif %}
+                        <li><a class="dropdown-item small fw-semibold text-primary" href="/notifications">View All Notifications</a></li>
+                    </ul>
+                </div>
+
+                <!-- PROFILE DROPDOWN -->
+                <div class="dropdown">
+                    <button class="btn btn-light border rounded-pill d-flex align-items-center gap-2 px-2 py-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 34px; height: 34px; font-size: 0.9rem;">
+                            {{ (session.get('user_name') or 'U')[0]|upper }}
+                        </span>
+                        <span class="fw-semibold text-dark d-none d-md-inline">{{ session.get('user_name') or 'User' }}</span>
+                        <i class="bi bi-chevron-down text-muted small d-none d-md-inline"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg p-2" style="min-width: 230px;">
+                        <li class="px-2 pt-1 pb-2 d-flex align-items-center gap-2">
+                            <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 38px; height: 38px;">
+                                {{ (session.get('user_name') or 'U')[0]|upper }}
+                            </span>
+                            <div class="text-truncate">
+                                <div class="fw-bold text-dark text-truncate">{{ session.get('user_name') or 'User' }}</div>
+                                {% if nav_user_occupation %}<div class="text-muted small text-truncate">{{ nav_user_occupation }}</div>{% endif %}
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                        <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear me-2"></i>Settings</a></li>
+                        <li><a class="dropdown-item" href="/help"><i class="bi bi-question-circle me-2"></i>Help</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger fw-semibold" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <!-- Flash Notifications: rendered as auto-dismissing toasts (top-right)
+             instead of static inline alerts, so confirmations don't require
+             a manual close and don't push page content down. -->
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="toast align-items-center border-0 rounded-3 shadow-lg mb-2 text-bg-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="bi {{ 'bi-check-circle-fill' if category == 'success' else 'bi-exclamation-triangle-fill' if category == 'danger' else 'bi-info-circle-fill' }} me-2"></i>{{ message }}
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% block content %}
+        {% endblock %}
+
+        <footer class="app-footer small">
+            <div class="fw-semibold text-dark">Smart Finance Insights</div>
+            <div>Built using Flask &bull; Bootstrap &bull; SQLite &bull; Version 1.0</div>
+            <div>&copy; 2026</div>
+        </footer>
+    </div>
+
+</div>
+
+{% if session.get('user_id') %}
+<!-- Floating Quick-Add Button -->
+<div id="fabOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.25); z-index: 1065; display: none;"></div>
+<div id="fabContainer" style="position: fixed; bottom: 28px; right: 28px; z-index: 1070;">
+    <div id="fabMenu" class="d-flex flex-column align-items-end gap-2 mb-3">
+        <a href="/add_expense" class="btn btn-danger rounded-pill shadow-lg px-3 py-2 fw-semibold d-flex align-items-center gap-2 fab-item">
+            <i class="bi bi-arrow-up-circle"></i> Expense
+        </a>
+        <a href="/add_income" class="btn btn-success rounded-pill shadow-lg px-3 py-2 fw-semibold d-flex align-items-center gap-2 fab-item">
+            <i class="bi bi-arrow-down-circle"></i> Income
+        </a>
+        <a href="/bills" class="btn btn-warning text-dark rounded-pill shadow-lg px-3 py-2 fw-semibold d-flex align-items-center gap-2 fab-item">
+            <i class="bi bi-receipt-cutoff"></i> Bill
+        </a>
+        <a href="/goals" class="btn btn-primary rounded-pill shadow-lg px-3 py-2 fw-semibold d-flex align-items-center gap-2 fab-item">
+            <i class="bi bi-trophy-fill"></i> Goal
+        </a>
+    </div>
+    <button id="fabToggle" class="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center" title="Quick add" style="width: 58px; height: 58px; transition: transform 0.25s ease, box-shadow 0.2s ease;">
+        <i class="bi bi-plus-lg fs-3"></i>
+    </button>
+</div>
+{% endif %}
+
+<!-- Bootstrap JS -->
+<script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- TOAST NOTIFICATIONS ---
+        // Toasts need explicit JS init to display and auto-hide (unlike
+        // alerts, they don't work from CSS classes alone).
+        document.querySelectorAll('.toast').forEach(el => new bootstrap.Toast(el).show());
+
+        // --- FLOATING QUICK-ADD BUTTON ---
+        const fabToggle = document.getElementById('fabToggle');
+        const fabMenu = document.getElementById('fabMenu');
+        const fabOverlay = document.getElementById('fabOverlay');
+        if (fabToggle && fabMenu) {
+            let fabOpen = false;
+            const setFab = (open) => {
+                fabOpen = open;
+                fabMenu.classList.toggle('fab-open', open);
+                fabToggle.style.transform = open ? 'rotate(45deg)' : 'rotate(0deg)';
+                if (fabOverlay) fabOverlay.style.display = open ? 'block' : 'none';
+            };
+            fabToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                setFab(!fabOpen);
+            });
+            if (fabOverlay) fabOverlay.addEventListener('click', () => setFab(false));
+            document.addEventListener('click', (e) => {
+                if (fabOpen && !document.getElementById('fabContainer').contains(e.target)) {
+                    setFab(false);
+                }
+            });
+        }
+
+        // --- SIDEBAR COLLAPSE TOGGLE ---
+        const sidebar = document.getElementById('appSidebar');
+        const collapseBtn = document.getElementById('sidebarCollapseToggle');
+        const collapseIcon = document.getElementById('sidebarCollapseIcon');
+        let isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+        const applyCollapseState = () => {
+            sidebar.classList.toggle('sidebar-collapsed', isCollapsed);
+            // The pre-paint script (in <head>) sets this same state on <html>
+            // to avoid a flash of the expanded sidebar on load - but it never
+            // gets cleared again on its own, so toggling only the sidebar's
+            // own class left it permanently stuck collapsed. Keep both in sync.
+            document.documentElement.classList.toggle('sidebar-pre-collapsed', isCollapsed);
+            collapseBtn.setAttribute('title', isCollapsed ? 'Expand sidebar' : 'Collapse sidebar');
+            if (collapseIcon) {
+                collapseIcon.classList.toggle('bi-chevron-double-left', !isCollapsed);
+                collapseIcon.classList.toggle('bi-chevron-double-right', isCollapsed);
+            }
+        };
+        applyCollapseState();
+
+        collapseBtn.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            applyCollapseState();
+        });
+
+        // --- MOBILE SIDEBAR DRAWER ---
+        const mobileBtn = document.getElementById('mobileMenuBtn');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (mobileBtn && overlay && sidebar) {
+            const closeMobile = () => {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('show');
+            };
+            mobileBtn.addEventListener('click', () => {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('show');
+            });
+            overlay.addEventListener('click', closeMobile);
+            sidebar.querySelectorAll('a.menu').forEach(link => link.addEventListener('click', closeMobile));
+        }
+
+        // --- DARK MODE TOGGLE LOGIC ---
+        const darkBtn = document.getElementById('darkModeToggle');
+        const darkIcon = document.getElementById('darkModeIcon');
+        const darkText = document.getElementById('darkModeText');
+        let isDarkOn = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+
+        const applyDarkState = () => {
+            document.documentElement.setAttribute('data-bs-theme', isDarkOn ? 'dark' : 'light');
+            if (isDarkOn) {
+                darkIcon.classList.replace('bi-moon-stars-fill', 'bi-sun-fill');
+                darkText.innerText = 'Dark Mode: ON';
+                darkBtn.classList.replace('btn-outline-secondary', 'btn-light');
+                darkBtn.classList.replace('text-light', 'text-primary');
+            } else {
+                darkIcon.classList.replace('bi-sun-fill', 'bi-moon-stars-fill');
+                darkText.innerText = 'Dark Mode: OFF';
+                darkBtn.classList.replace('btn-light', 'btn-outline-secondary');
+                darkBtn.classList.replace('text-primary', 'text-light');
+            }
+        };
+
+        applyDarkState();
+
+        darkBtn.addEventListener('click', () => {
+            isDarkOn = !isDarkOn;
+            localStorage.setItem('darkMode', isDarkOn);
+            applyDarkState();
+        });
+
+        // --- PRIVACY TOGGLE LOGIC ---
+        const toggleBtn = document.getElementById('privacyToggle');
+        const icon = document.getElementById('privacyIcon');
+        const text = document.getElementById('privacyText');
+        
+        let isPrivacyOn = localStorage.getItem('privacyMode') === 'true';
+
+        const applyPrivacyState = () => {
+            let sensitiveElements = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, .badge'));
+            
+            document.querySelectorAll('*').forEach(el => {
+                if (el.children.length === 0 && ['₹','$','€','£','¥'].some(s => el.textContent.includes(s))) {
+                    sensitiveElements.push(el);
+                }
+            });
+
+            if (isPrivacyOn) {
+                sensitiveElements.forEach(el => el.classList.add('privacy-blur'));
+                icon.classList.replace('bi-eye-fill', 'bi-eye-slash-fill');
+                text.innerText = 'Privacy: ON';
+                toggleBtn.classList.replace('btn-outline-secondary', 'btn-light');
+                toggleBtn.classList.replace('text-light', 'text-primary');
+            } else {
+                sensitiveElements.forEach(el => el.classList.remove('privacy-blur'));
+                icon.classList.replace('bi-eye-slash-fill', 'bi-eye-fill');
+                text.innerText = 'Privacy: OFF';
+                toggleBtn.classList.replace('btn-light', 'btn-outline-secondary');
+                toggleBtn.classList.replace('text-primary', 'text-light');
+            }
+        };
+
+        applyPrivacyState();
+
+        toggleBtn.addEventListener('click', () => {
+            isPrivacyOn = !isPrivacyOn;
+            localStorage.setItem('privacyMode', isPrivacyOn);
+            applyPrivacyState(); 
+        });
+    });
+</script>
+
+</body>
+</html>

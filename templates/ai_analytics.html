@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+
+<div class="container-fluid mt-2 mb-5">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-stars text-primary me-2"></i>AI Analytics</h3>
+            <p class="text-muted mb-0">Forecasts, unusual-transaction detection, and recommendations built from your own spending history.</p>
+        </div>
+        <a href="/analysis" class="btn btn-sm btn-outline-secondary rounded-pill fw-semibold px-3 mt-2 mt-md-0">
+            <i class="bi bi-graph-down-arrow me-1"></i> Spending Analysis
+        </a>
+    </div>
+
+    {% if not forecast %}
+    <div class="card shadow-sm border-0 rounded-4 p-5 text-center">
+        <i class="bi bi-graph-up-arrow text-secondary opacity-50" style="font-size: 3rem;"></i>
+        <h5 class="fw-bold text-dark mt-3">Not enough data yet</h5>
+        <p class="text-muted mb-0">Log a month of expenses to unlock forecasts, anomaly detection, and smart recommendations.</p>
+    </div>
+    {% else %}
+
+    <!-- Forecast summary cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-primary border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Forecast For</p>
+                <h5 class="fw-bold text-dark mb-0">{{ forecast.next_month_label }}</h5>
+                <small class="text-muted">based on last {{ forecast.based_on_months }} month(s)</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-danger border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Projected Expense</p>
+                <h5 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ forecast.predicted_total }}</h5>
+                <small class="{{ 'text-danger' if forecast.trend == 'rising' else 'text-success' if forecast.trend == 'falling' else 'text-muted' }}">
+                    <i class="bi {{ 'bi-arrow-up-short' if forecast.trend == 'rising' else 'bi-arrow-down-short' if forecast.trend == 'falling' else 'bi-dash' }}"></i>
+                    {{ forecast.trend|capitalize }} ({{ '+' if forecast.change_pct > 0 else '' }}{{ forecast.change_pct }}%)
+                </small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-success border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Projected Income</p>
+                <h5 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ forecast.predicted_income }}</h5>
+                <small class="text-muted">avg. of recent months</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-4 {{ 'border-success' if forecast.predicted_savings >= 0 else 'border-danger' }}">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Projected Savings</p>
+                <h5 class="fw-bold {{ 'text-success' if forecast.predicted_savings >= 0 else 'text-danger' }} mb-0">{{ currency_symbol }}{{ forecast.predicted_savings }}</h5>
+                <small class="text-muted">income − expense</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Forecast by category -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-bar-chart-steps text-primary me-2"></i>Projected Spend by Category</h6>
+                {% if forecast.predicted_by_category %}
+                <canvas id="forecastChart" style="max-height: 260px;"></canvas>
+                {% else %}
+                <p class="text-muted small mb-0">No category data available yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Anomaly detection -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4 p-4 h-100">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>Unusual Transactions</h6>
+                {% if anomalies %}
+                    <div style="max-height: 280px; overflow-y: auto;">
+                        {% for a in anomalies %}
+                        <div class="d-flex justify-content-between align-items-center p-2 {{ 'bg-light' if loop.index0 % 2 == 0 else '' }} rounded-3 mb-1">
+                            <div>
+                                <span class="fw-semibold text-dark small d-block">{{ a.category }}</span>
+                                <span class="text-muted" style="font-size: 0.75rem;">{{ a.date }} &middot; usual avg {{ currency_symbol }}{{ a.category_average }}</span>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold text-danger d-block">{{ currency_symbol }}{{ a.amount }}</span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill" style="font-size: 0.7rem;">+{{ a.deviation_pct }}%</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-check-circle text-success opacity-75" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0 small">Nothing unusual detected in your recent spending.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart recommendations -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 p-4">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-lightbulb-fill text-warning me-2"></i>Smart Recommendations</h6>
+                <div class="row g-3">
+                    {% for rec in smart_recommendations %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start p-3 bg-light rounded-3 h-100">
+                            <i class="bi bi-arrow-right-circle-fill text-primary me-2 mt-1"></i>
+                            <span class="small text-dark">{{ rec }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- AI Insights and Budget Recommendations live on Analysis and Budget respectively - link across instead of repeating them -->
+    <div class="row g-4">
+        <div class="col-md-6">
+            <a href="/analysis" class="card shadow-sm border-0 rounded-4 p-4 h-100 text-decoration-none d-flex flex-row align-items-center gap-3">
+                <i class="bi bi-stars text-warning" style="font-size: 1.8rem;"></i>
+                <div>
+                    <h6 class="fw-bold text-dark mb-1">AI Insights</h6>
+                    <p class="text-muted small mb-0">Descriptive insights about your spending patterns - on the Spending Analysis page.</p>
+                </div>
+                <i class="bi bi-arrow-right text-muted ms-auto"></i>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a href="/budget" class="card shadow-sm border-0 rounded-4 p-4 h-100 text-decoration-none d-flex flex-row align-items-center gap-3">
+                <i class="bi bi-clipboard2-check-fill text-primary" style="font-size: 1.8rem;"></i>
+                <div>
+                    <h6 class="fw-bold text-dark mb-1">Budget Recommendations</h6>
+                    <p class="text-muted small mb-0">Category-by-category budget guidance - on the Budget page.</p>
+                </div>
+                <i class="bi bi-arrow-right text-muted ms-auto"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+    Chart.defaults.plugins.legend.labels.font = { size: 12 };
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.animation.duration = 700;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+
+    const forecastEl = document.getElementById('forecastChart');
+    if (forecastEl) {
+        new Chart(forecastEl.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: {{ forecast.predicted_by_category | map(attribute='category') | list | tojson if forecast else [] }},
+                datasets: [{
+                    label: 'Projected',
+                    data: {{ forecast.predicted_by_category | map(attribute='predicted') | list | tojson if forecast else [] }},
+                    backgroundColor: '#6f42c1',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: '#f3f4f6' } }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

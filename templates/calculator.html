@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-calculator-fill text-primary me-2"></i>EMI Calculator</h3>
+        <p class="text-muted">Estimate your monthly loan installment before you borrow.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card p-4 shadow-sm border-0 rounded-4">
+                <h5 class="fw-bold text-dark mb-4">Loan Details</h5>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="fw-semibold text-muted small mb-1">Loan Amount ({{ currency_symbol }})</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0 text-muted">{{ currency_symbol }}</span>
+                            <input type="number" step="0.01" name="principal" class="form-control bg-light border-0 py-2" placeholder="e.g., 500000" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-semibold text-muted small mb-1">Annual Interest Rate (%)</label>
+                        <input type="number" step="0.01" name="rate" class="form-control bg-light border-0 py-2" placeholder="e.g., 8.5" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-semibold text-muted small mb-1">Tenure (Months)</label>
+                        <input type="number" step="1" min="1" name="months" class="form-control bg-light border-0 py-2" placeholder="e.g., 60" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold rounded-3 shadow-sm mt-2">
+                        <i class="bi bi-calculator me-1"></i> Calculate EMI
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100 d-flex align-items-center justify-content-center">
+                {% if emi_result is not none %}
+                    <div class="text-center">
+                        <p class="text-muted small fw-semibold text-uppercase mb-1">Estimated Monthly EMI</p>
+                        <h1 class="display-4 fw-bold text-primary mb-3">{{ currency_symbol }}{{ emi_result }}</h1>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2">
+                            <i class="bi bi-info-circle me-1"></i> Based on the figures you entered
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-calculator text-secondary opacity-50 display-3 mb-3 d-block"></i>
+                        <p class="mb-0 fw-semibold">Enter your loan details to see the estimated EMI.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5" style="max-width: 600px;">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Investment</h3>
+        <p class="text-muted">Update this holding's asset type, name, or values.</p>
+    </div>
+
+    <div class="card p-4 shadow-sm border-0 rounded-4">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="fw-semibold text-muted small mb-1">Asset Type</label>
+                <select name="asset" class="form-select bg-light border-0 py-2" required>
+                    {% for opt in ['Stocks', 'Mutual Funds', 'Gold', 'Fixed Deposits', 'Bonds', 'Real Estate', 'Cryptocurrency'] %}
+                    <option value="{{ opt }}" {% if investment.asset == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="fw-semibold text-muted small mb-1">Investment Name</label>
+                <input type="text" name="name" class="form-control bg-light border-0 py-2" value="{{ investment.investment_name }}" required>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted small mb-1">Invested Amount ({{ currency_symbol }})</label>
+                    <input type="number" step="0.01" name="invested" class="form-control bg-light border-0 py-2" value="{{ investment.invested_amount }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted small mb-1">Current Value ({{ currency_symbol }})</label>
+                    <input type="number" step="0.01" name="current" class="form-control bg-light border-0 py-2" value="{{ investment.current_value }}" required>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary px-4 py-2 fw-bold rounded-3 shadow-sm">
+                    <i class="bi bi-check-circle me-1"></i> Update Investment
+                </button>
+                <a href="/investments" class="btn btn-light px-4 py-2 fw-bold rounded-3 text-muted">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+{% endblock %}

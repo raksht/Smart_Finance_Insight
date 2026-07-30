@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5" style="max-width: 800px;">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-gear-fill text-primary me-2"></i>Settings</h3>
+        <p class="text-muted">Manage your preferences and account options.</p>
+    </div>
+
+    <!-- Display Preferences -->
+    <div class="card shadow-sm border-0 rounded-4 p-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">Display Preferences</h5>
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+            <div>
+                <div class="fw-semibold text-dark"><i class="bi bi-moon-stars-fill me-2 text-primary"></i>Dark Mode</div>
+                <div class="text-muted small">Currently <span id="settingsDarkStatus" class="fw-semibold">OFF</span></div>
+            </div>
+            <span class="badge bg-light text-muted border px-3 py-2 rounded-pill small">
+                <i class="bi bi-moon-stars me-1"></i>Toggle from the top bar
+            </span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center py-2 pt-3">
+            <div>
+                <div class="fw-semibold text-dark"><i class="bi bi-eye-fill me-2 text-primary"></i>Privacy Mode</div>
+                <div class="text-muted small">Currently <span id="settingsPrivacyStatus" class="fw-semibold">OFF</span> - blurs amounts and headings when enabled</div>
+            </div>
+            <span class="badge bg-light text-muted border px-3 py-2 rounded-pill small">
+                <i class="bi bi-eye me-1"></i>Toggle from the top bar
+            </span>
+        </div>
+    </div>
+
+    <!-- Account -->
+    <div class="card shadow-sm border-0 rounded-4 p-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">Account</h5>
+        <p class="text-muted small mb-3">Update your name, contact details, income, or password from your profile page.</p>
+        <a href="/profile" class="btn btn-outline-primary rounded-pill px-4 fw-semibold">
+            <i class="bi bi-person me-1"></i> Go to My Profile
+        </a>
+    </div>
+
+    <!-- Data -->
+    <div class="card shadow-sm border-0 rounded-4 p-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">Your Data</h5>
+        <p class="text-muted small mb-3">Download everything you've tracked - income, expenses, budgets, bills, debts, investments, and goals - in a single file.</p>
+        <a href="/export_all_data" class="btn btn-outline-success rounded-pill px-4 fw-semibold">
+            <i class="bi bi-download me-1"></i> Export All My Data (CSV)
+        </a>
+    </div>
+
+    <!-- Regional -->
+    <div class="card shadow-sm border-0 rounded-4 p-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">Regional</h5>
+        <form method="POST" action="/settings" class="d-flex justify-content-between align-items-center">
+            <div class="fw-semibold text-dark"><i class="bi bi-currency-exchange me-2 text-primary"></i>Currency</div>
+            <select name="currency_symbol" class="form-select form-select-sm w-auto rounded-pill" onchange="this.form.submit()">
+                <option value="₹" {% if currency_symbol == '₹' %}selected{% endif %}>₹ INR</option>
+                <option value="$" {% if currency_symbol == '$' %}selected{% endif %}>$ USD</option>
+                <option value="€" {% if currency_symbol == '€' %}selected{% endif %}>€ EUR</option>
+                <option value="£" {% if currency_symbol == '£' %}selected{% endif %}>£ GBP</option>
+                <option value="¥" {% if currency_symbol == '¥' %}selected{% endif %}>¥ JPY</option>
+            </select>
+        </form>
+    </div>
+
+    <!-- Backup & Restore -->
+    <div class="card shadow-sm border-0 rounded-4 p-4">
+        <h5 class="fw-bold text-dark mb-3">Backup &amp; Restore</h5>
+        <p class="text-muted small mb-3">Download a full JSON backup of every table, or restore from one. Restoring <strong>replaces</strong> your current data.</p>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/export_backup" class="btn btn-outline-primary rounded-pill px-4 fw-semibold">
+                <i class="bi bi-cloud-download me-1"></i> Download Backup (JSON)
+            </a>
+        </div>
+        <form action="/import_backup" method="POST" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 mt-3">
+            <input type="file" name="backup_file" accept="application/json" class="form-control form-control-sm" style="max-width: 260px;" required>
+            <button type="submit" class="btn btn-outline-danger rounded-pill px-4 fw-semibold" onclick="return confirm('This replaces your current data with the backup file. Continue?');">
+                <i class="bi bi-upload me-1"></i> Restore from Backup
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const darkOn = localStorage.getItem('darkMode') === 'true';
+            const privacyOn = localStorage.getItem('privacyMode') === 'true';
+            document.getElementById('settingsDarkStatus').textContent = darkOn ? 'ON' : 'OFF';
+            document.getElementById('settingsPrivacyStatus').textContent = privacyOn ? 'ON' : 'OFF';
+        } catch (e) { /* localStorage unavailable */ }
+    });
+</script>
+
+{% endblock %}

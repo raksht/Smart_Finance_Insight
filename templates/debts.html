@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-credit-card-2-back-fill text-danger me-2"></i>Debts & Loans</h3>
+        <p class="text-muted">Track loans and EMIs to keep your debt-to-income ratio healthy.</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-primary border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Total Monthly Payments</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ total_monthly_payment }}</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-warning border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Total Outstanding</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ total_outstanding }}</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 p-3 h-100 border-start border-{{ 'danger' if debt_ratio > 40 else 'warning' if debt_ratio > 20 else 'success' }} border-4">
+                <p class="text-muted mb-1 fw-semibold small text-uppercase">Debt-to-Income Ratio</p>
+                <h4 class="fw-bold text-{{ 'danger' if debt_ratio > 40 else 'warning' if debt_ratio > 20 else 'success' }} mb-0">{{ debt_ratio }}%</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Debt Form -->
+    <div class="card p-4 shadow-sm border-0 rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-4">Add a Debt or Loan</h5>
+        <form action="/debts" method="POST">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="fw-semibold text-muted mb-1 small">Debt / Loan Name</label>
+                    <input type="text" name="debt_name" class="form-control bg-light border-0 py-2" placeholder="e.g., Car Loan, Credit Card" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-semibold text-muted mb-1 small">Monthly Payment ({{ currency_symbol }})</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0 text-muted">{{ currency_symbol }}</span>
+                        <input type="number" step="0.01" name="monthly_payment" class="form-control bg-light border-0 py-2" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-semibold text-muted mb-1 small">Outstanding Amount ({{ currency_symbol }})</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0 text-muted">{{ currency_symbol }}</span>
+                        <input type="number" step="0.01" name="outstanding_amount" class="form-control bg-light border-0 py-2" required>
+                    </div>
+                </div>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold rounded-3 shadow-sm">
+                        <i class="bi bi-plus-lg me-1"></i> Add Debt
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Debts Table -->
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 pt-3 pb-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="fw-bold text-dark mb-0">Your Debts</h5>
+            <form method="GET" action="/debts" class="d-flex gap-2">
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Search debts..." class="form-control form-control-sm rounded-pill" style="width:180px;">
+                <a href="/export_debts" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold px-3"><i class="bi bi-filetype-csv me-1"></i>CSV</a>
+                <a href="/export_debts_pdf" class="btn btn-sm btn-outline-danger rounded-pill fw-semibold px-3"><i class="bi bi-filetype-pdf me-1"></i>PDF</a>
+            </form>
+        </div>
+        <div class="card-body px-4 pb-4 pt-2">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="text-muted small text-uppercase" style="letter-spacing: 0.5px;">
+                        <tr>
+                            <th class="fw-semibold pb-3">Debt / Loan</th>
+                            <th class="fw-semibold pb-3">Monthly Payment</th>
+                            <th class="fw-semibold pb-3">Outstanding Amount</th>
+                            <th class="fw-semibold pb-3 text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        {% for d in debts %}
+                        <tr>
+                            <td class="fw-bold text-dark">{{ d.debt_name }}</td>
+                            <td class="text-muted">{{ currency_symbol }}{{ d.monthly_payment }}</td>
+                            <td class="text-muted">{{ currency_symbol }}{{ d.outstanding_amount }}</td>
+                            <td class="text-end">
+                                <form action="/log_debt_payment/{{ d.id }}" method="POST" class="d-inline-flex align-items-center gap-1 me-1">
+                                    <input type="number" step="0.01" name="payment_amount" placeholder="{{ currency_symbol }} paid" class="form-control form-control-sm rounded-pill" style="width: 100px;" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 fw-semibold"><i class="bi bi-check-lg"></i></button>
+                                </form>
+                                <a href="/edit_debt/{{ d.id }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 fw-semibold me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="/delete_debt/{{ d.id }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold" onclick="return confirm('Remove this debt?');">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-credit-card fs-1 d-block mb-3 text-light"></i>
+                                <p class="mb-0">No debts recorded. That's a good thing!</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

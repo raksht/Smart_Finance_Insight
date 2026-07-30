@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-receipt-cutoff text-primary me-2"></i>Bills & Due Dates</h3>
+        <p class="text-muted">Keep track of recurring bills so you never miss a due date.</p>
+    </div>
+
+    <!-- Add Bill Form -->
+    <div class="card p-4 shadow-sm border-0 rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-4">Add a Bill</h5>
+        <form action="/bills" method="POST">
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="fw-semibold text-muted mb-1 small">Bill Name</label>
+                    <input type="text" name="bill_name" class="form-control bg-light border-0 py-2" placeholder="e.g., Electricity, Internet, Rent" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="fw-semibold text-muted mb-1 small">Amount ({{ currency_symbol }})</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0 text-muted">{{ currency_symbol }}</span>
+                        <input type="number" step="0.01" name="amount" class="form-control bg-light border-0 py-2" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="fw-semibold text-muted mb-1 small">Due Date</label>
+                    <input type="date" name="due_date" class="form-control bg-light border-0 py-2" required>
+                </div>
+                <div class="col-12 mt-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_recurring" id="isRecurring" value="1">
+                        <label class="form-check-label small text-muted" for="isRecurring">Recurring monthly bill (auto-creates next month's bill when marked paid)</label>
+                    </div>
+                </div>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold rounded-3 shadow-sm">
+                        <i class="bi bi-plus-lg me-1"></i> Add Bill
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bills Table -->
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 pt-3 pb-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="fw-bold text-dark mb-0">Your Bills</h5>
+            <form method="GET" action="/bills" class="d-flex gap-2">
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Search bills..." class="form-control form-control-sm rounded-pill" style="width:180px;">
+            </form>
+        </div>
+        <div class="card-body px-4 pb-4 pt-2">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="text-muted small text-uppercase" style="letter-spacing: 0.5px;">
+                        <tr>
+                            <th class="fw-semibold pb-3">Bill</th>
+                            <th class="fw-semibold pb-3">Amount</th>
+                            <th class="fw-semibold pb-3">Due Date</th>
+                            <th class="fw-semibold pb-3">Status</th>
+                            <th class="fw-semibold pb-3 text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        {% for b in bills %}
+                        <tr>
+                            <td class="fw-bold text-dark">{{ b.bill_name }} {% if b.is_recurring %}<i class="bi bi-arrow-repeat text-primary ms-1" title="Recurring monthly"></i>{% endif %}</td>
+                            <td class="text-muted">{{ currency_symbol }}{{ b.amount }}</td>
+                            <td class="text-muted">{{ b.due_date }}</td>
+                            <td>
+                                <span class="badge rounded-pill px-3 py-2 fw-semibold
+                                    {% if b.status == 'Paid' %}bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25
+                                    {% elif b.status == 'Overdue' %}bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25
+                                    {% elif b.status == 'Due Soon' %}bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25
+                                    {% else %}bg-success bg-opacity-10 text-success border border-success border-opacity-25{% endif %}">
+                                    {{ b.status }}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <form action="/toggle_bill_paid/{{ b.id }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm {{ 'btn-outline-secondary' if b.is_paid else 'btn-outline-success' }} rounded-pill px-3 fw-semibold me-1">
+                                        <i class="bi {{ 'bi-arrow-counterclockwise' if b.is_paid else 'bi-check-lg' }}"></i> {{ 'Unpaid' if b.is_paid else 'Paid' }}
+                                    </button>
+                                </form>
+                                <a href="/edit_bill/{{ b.id }}" class="btn btn-sm btn-outline-primary rounded-pill px-2 fw-semibold me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="/delete_bill/{{ b.id }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold" onclick="return confirm('Remove this bill?');">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <i class="bi bi-receipt fs-1 d-block mb-3 text-light"></i>
+                                <p class="mb-0">No bills added yet.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

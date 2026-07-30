@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-cart-dash-fill text-danger me-2"></i>Log an Expense</h3>
+        <p class="text-muted">Keep track of your spending to stay within your budget.</p>
+    </div>
+
+    <!-- Upgraded Premium Form (Grid Layout) -->
+    <div class="card p-4 shadow-sm border-0 rounded-4 mb-5" style="max-width: 700px;">
+        <h5 class="fw-bold text-dark mb-4">Expense Details</h5>
+        
+        <form method="POST" action="/add_expense">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted mb-1 small">Category</label>
+                    <select name="category" class="form-select bg-light border-0 py-2" required>
+                        <option value="" disabled selected>Select a category...</option>
+                        <option value="Food">Food</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Bills">Bills</option>
+                        <option value="Education">Education</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted mb-1 small">Date</label>
+                    <input type="date" name="date" class="form-control bg-light border-0 py-2" required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted mb-1 small">Amount ({{ currency_symbol }})</label>
+                    <div class="input-group shadow-sm-none">
+                        <span class="input-group-text bg-light border-0 text-muted">{{ currency_symbol }}</span>
+                        <input type="number" step="0.01" name="amount" class="form-control bg-light border-0 py-2" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="fw-semibold text-muted mb-1 small">Note (Optional)</label>
+                    <input type="text" name="note" class="form-control bg-light border-0 py-2" placeholder="e.g., Groceries, Uber to work">
+                </div>
+
+                <div class="col-12 mt-4 d-flex gap-3">
+                    <button type="submit" class="btn btn-danger px-4 py-2 fw-bold rounded-3 shadow-sm">
+                        <i class="bi bi-cart-plus me-1"></i> Add Expense
+                    </button>
+                    <!-- NEW: Cancel button returning to dashboard -->
+                    <a href="/dashboard" class="btn btn-light px-4 py-2 fw-bold rounded-3 shadow-sm text-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

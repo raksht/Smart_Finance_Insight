@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid mt-2 mb-5">
+    
+    <!-- Welcome Banner with Date & Health Badge -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 bg-white p-4 rounded-4 shadow-sm">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">{{ greeting|default('Hello') }}, {{ session["user_name"] }} 👋</h3>
+            <p class="text-muted mb-0">Here is your financial overview for today.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex align-items-center gap-3">
+            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold text-center" style="white-space: pre-line; line-height: 1.2;">{{ today_str|default('') }}</span>
+            
+            <!-- Financial Health Badge (4-tier: Excellent/Good/Fair/Poor) -->
+            <span class="badge px-3 py-2 rounded-pill fw-bold fs-6 
+                {% if financial_health.tier == 'Excellent' %}bg-success text-white
+                {% elif financial_health.tier == 'Good' %}bg-primary text-white
+                {% elif financial_health.tier == 'Fair' %}bg-warning text-dark
+                {% else %}bg-danger text-white{% endif %}">
+                <i class="bi bi-shield-check me-1"></i> Health: {{ financial_health.tier }}
+            </span>
+        </div>
+    </div>
+
+    {% if total_income == 0 and total_expense == 0 %}
+    <!-- Onboarding Checklist: only shown for brand-new accounts so the
+         first screen isn't just empty {{ currency_symbol }}0 cards with no direction. -->
+    <div class="card border-0 rounded-4 shadow-sm p-4 mb-4 bg-primary bg-opacity-10">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-rocket-takeoff-fill text-primary me-2"></i>Get Started</h5>
+        <p class="text-muted small mb-3">You're all set up - add a few things to see your dashboard come to life:</p>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/add_income" class="btn btn-sm btn-success rounded-pill px-3"><i class="bi bi-arrow-down-circle me-1"></i> Add Income</a>
+            <a href="/add_expense" class="btn btn-sm btn-danger rounded-pill px-3"><i class="bi bi-arrow-up-circle me-1"></i> Add an Expense</a>
+            <a href="/budget" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-bullseye me-1"></i> Set a Budget</a>
+            <a href="/goals" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-trophy-fill me-1"></i> Add a Goal</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick tools: no longer in the sidebar since they're utilities, not
+         core navigation - still one click away from the dashboard -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a href="/monthly_report" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Generate Report
+        </a>
+        <a href="/calculator" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-calculator-fill me-1"></i> EMI Calculator
+        </a>
+    </div>
+
+    <!-- Net Worth Highlight -->
+    <div class="card shadow-sm border-0 rounded-4 p-4 mb-4 d-flex flex-row justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <p class="text-muted mb-1 fw-semibold small text-uppercase"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Net Worth</p>
+            <h3 class="fw-bold {{ 'text-dark' if net_worth >= 0 else 'text-danger' }} mb-0">{{ currency_symbol }}{{ net_worth }}</h3>
+        </div>
+        
+    </div>
+
+    <!-- Upgraded Top Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100 rounded-4 border-start border-success border-4 p-3">
+                <p class="text-muted mb-1 fw-semibold"><i class="bi bi-arrow-down-circle text-success me-2"></i>Total Income</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ total_income }}</h4>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100 rounded-4 border-start border-danger border-4 p-3">
+                <p class="text-muted mb-1 fw-semibold"><i class="bi bi-arrow-up-circle text-danger me-2"></i>Total Expense</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ total_expense }}</h4>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100 rounded-4 border-start border-primary border-4 p-3">
+                <p class="text-muted mb-1 fw-semibold"><i class="bi bi-piggy-bank text-primary me-2"></i>Savings</p>
+                <h4 class="fw-bold text-dark mb-0">{{ currency_symbol }}{{ savings }}</h4>
+                <small class="text-muted mt-1 d-block">Savings Rate: <span class="fw-semibold text-primary">{{ savings_rate }}%</span></small>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100 rounded-4 border-start border-warning border-4 p-3">
+                <p class="text-muted mb-1 fw-semibold"><i class="bi bi-bullseye text-warning me-2"></i>Budget Left</p>
+                <h4 class="fw-bold {% if remaining_budget < 0 %}text-danger{% else %}text-dark{% endif %} mb-0">
+                    {{ currency_symbol }}{{ remaining_budget }}
+                </h4>
+                <small class="text-muted mt-1 d-block">Budget Used: <span class="fw-semibold text-warning">{{ budget_used_rate }}%</span></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Intelligence Dashboard CTA: the full health gauge, AI insights,
+         budget recommendations, notifications feed, goal predictions, risk
+         meter, savings trend and expense heat map all live on one dedicated
+         page now instead of being duplicated here on every load. -->
+    <div class="mb-4">
+        <div class="card border-0 rounded-4 shadow-sm p-4 text-white" style="background: linear-gradient(120deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%);">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-white bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 54px; height: 54px;">
+                        <i class="bi bi-stars fs-3"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Intelligence Dashboard</h5>
+                        <p class="mb-0 opacity-75 small">
+                            Financial health {{ financial_health.score }}/100 ({{ financial_health.tier }}) · AI insights, budget recommendations, goal predictions, risk meter &amp; more — all in one place.
+                        </p>
+                    </div>
+                </div>
+                <a href="/intelligence" class="btn btn-light fw-bold rounded-pill px-4 py-2 text-primary text-nowrap">
+                    <i class="bi bi-arrow-right-circle-fill me-1"></i> Open Intelligence Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Recent Activity: Expense / Income tabs + quick-add buttons
+             (recent_incomes, highest_income, highest_expense were already
+             being queried by the route but never rendered anywhere - this
+             puts that data to use instead of discarding it) -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-3 pb-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <ul class="nav nav-pills gap-2" id="recentActivityTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-semibold px-3" id="expenses-tab" data-bs-toggle="pill" data-bs-target="#expenses-pane" type="button" role="tab">
+                                <i class="bi bi-arrow-up-circle text-danger me-1"></i>Expenses
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold px-3" id="income-tab" data-bs-toggle="pill" data-bs-target="#income-pane" type="button" role="tab">
+                                <i class="bi bi-arrow-down-circle text-success me-1"></i>Income
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="d-flex gap-2">
+                        <a href="/add_expense" class="btn btn-sm btn-danger fw-semibold rounded-pill px-3" title="Add Expense">
+                            <i class="bi bi-plus-lg"></i> Expense
+                        </a>
+                        <a href="/add_income" class="btn btn-sm btn-success fw-semibold rounded-pill px-3" title="Add Income">
+                            <i class="bi bi-plus-lg"></i> Income
+                        </a>
+                        <a href="/export_report" class="btn btn-sm btn-outline-primary fw-bold rounded-pill shadow-sm px-3">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Export
+                        </a>
+                    </div>
+                </div>
+
+                {% if highest_expense or highest_income %}
+                <div class="px-3 pt-2 pb-1 d-flex flex-wrap gap-2">
+                    {% if highest_expense %}
+                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-2 rounded-pill fw-semibold">
+                        <i class="bi bi-graph-down-arrow me-1"></i> Top spend: {{ highest_expense.category }} ({{ currency_symbol }}{{ highest_expense.total }})
+                    </span>
+                    {% endif %}
+                    {% if highest_income %}
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill fw-semibold">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Top source: {{ highest_income.source }} ({{ currency_symbol }}{{ highest_income.total }})
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="card-body px-3 py-0">
+                    <div class="tab-content">
+                        <!-- Expenses pane -->
+                        <div class="tab-pane fade show active" id="expenses-pane" role="tabpanel">
+                            <div class="table-responsive recent-activity-scroll">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light text-muted">
+                                        <tr>
+                                            <th class="fw-semibold">Category</th>
+                                            <th class="fw-semibold">Amount</th>
+                                            <th class="fw-semibold">Date</th>
+                                            <th class="fw-semibold">Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for expense in recent_expenses %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold">
+                                                    {{ expense.category }}
+                                                </span>
+                                            </td>
+                                            <td class="fw-bold text-danger">{{ currency_symbol }}{{ expense.amount }}</td>
+                                            <td class="text-muted">{{ expense.date }}</td>
+                                            <td class="text-muted">{{ expense.note }}</td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-5">
+                                                <i class="bi bi-receipt fs-1 d-block mb-2 text-light"></i>
+                                                No recent expenses found.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Income pane -->
+                        <div class="tab-pane fade" id="income-pane" role="tabpanel">
+                            <div class="table-responsive recent-activity-scroll">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light text-muted">
+                                        <tr>
+                                            <th class="fw-semibold">Source</th>
+                                            <th class="fw-semibold">Amount</th>
+                                            <th class="fw-semibold">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for income in recent_incomes %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-semibold">
+                                                    {{ income.source }}
+                                                </span>
+                                            </td>
+                                            <td class="fw-bold text-success">{{ currency_symbol }}{{ income.amount }}</td>
+                                            <td class="text-muted">{{ income.date }}</td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted py-5">
+                                                <i class="bi bi-cash-coin fs-1 d-block mb-2 text-light"></i>
+                                                No recent income found.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .recent-activity-scroll {
+                        max-height: 280px;
+                        overflow-y: auto;
+                    }
+                    .recent-activity-scroll thead th {
+                        position: sticky;
+                        top: 0;
+                        z-index: 1;
+                    }
+                    .recent-activity-scroll::-webkit-scrollbar {
+                        width: 6px;
+                    }
+                    .recent-activity-scroll::-webkit-scrollbar-thumb {
+                        background-color: #dee2e6;
+                        border-radius: 10px;
+                    }
+                    .recent-activity-scroll::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+                </style>
+            </div>
+        </div>
+
+        <!-- Quick Summary Side Card -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100 rounded-4 bg-primary text-white p-3">
+                <div class="card-body p-3 d-flex flex-column justify-content-center">
+                    <h5 class="fw-bold mb-4 text-white"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Quick Summary</h5>
+                    
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="opacity-75 fw-semibold">Income</span>
+                        <span class="fw-bold fs-5">{{ currency_symbol }}{{ total_income }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="opacity-75 fw-semibold">Expense</span>
+                        <span class="fw-bold fs-5">{{ currency_symbol }}{{ total_expense }}</span>
+                    </div>
+                    
+                    <hr class="border-light opacity-25 my-3">
+                    
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="opacity-75 fw-semibold">Net Savings</span>
+                        <span class="fw-bold fs-4">{{ currency_symbol }}{{ savings }}</span>
+                    </div>
+
+                    {% if total_income > 0 %}
+                        <p class="mb-2 opacity-75 small fw-semibold">Savings Goal Progress</p>
+                        <div class="progress bg-white bg-opacity-25" style="height: 12px; border-radius: 12px;">
+                            {% if savings >= 0 %}
+                                <div class="progress-bar bg-white" style="width: {{ (savings/total_income*100)|round(0) }}%;"></div>
+                            {% else %}
+                                <div class="progress-bar bg-danger" style="width: 100%;"></div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-3 px-3">
+                    <h5 class="fw-bold text-dark mb-0">Cash Flow</h5>
+                </div>
+                <div class="card-body px-3 pb-3">
+                    <canvas id="lineChart" style="max-height: 280px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-3">
+                <div class="card-header bg-white border-0 pt-2 pb-3 px-3">
+                    <h5 class="fw-bold text-dark mb-0">Spending Breakdown</h5>
+                </div>
+                <div class="card-body d-flex justify-content-center align-items-center pb-3">
+                    <canvas id="pieChart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script>
+    // Consistent Chart.js polish across every chart in the app: bigger
+    // legends, rounded tooltips, smooth easing instead of a snap-in.
+    Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+    Chart.defaults.plugins.legend.labels.font = { size: 13 };
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.titleFont = { size: 13, weight: '600' };
+    Chart.defaults.plugins.tooltip.bodyFont = { size: 13 };
+    Chart.defaults.animation.duration = 700;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+    Chart.defaults.elements.line.tension = 0.4;
+</script>
+
+<script>
+    // 1. Line Chart (Cash Flow)
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: ['Start', 'Mid-Month', 'Current'],
+            datasets: [
+                {
+                    label: 'Income Tracker',
+                    data: [0, {{ total_income|default(0) * 0.5 }}, {{ total_income|default(0) }}],
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#0d6efd',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                },
+                {
+                    label: 'Expense Tracker',
+                    data: [0, {{ total_expense|default(0) * 0.4 }}, {{ total_expense|default(0) }}],
+                    borderColor: '#6c757d',
+                    backgroundColor: 'rgba(108, 117, 125, 0.05)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#6c757d',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                }
+            ]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, border: { dash: [5, 5] }, grid: { color: '#f3f4f6' } }
+            }
+        }
+    });
+
+    // 2. Doughnut Chart (Spending Breakdown)
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ pie_labels | tojson }}, 
+            datasets: [{
+                data: {{ pie_values | tojson }}, 
+                backgroundColor: [
+                    '#0d6efd', '#3d8bfd', '#6ea8fe', '#9ec5fe', '#e9ecef'
+                ],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            cutout: '75%', 
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
+            }
+        }
+    });
+
+</script>
+
+{% endblock %}
